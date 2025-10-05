@@ -14,6 +14,7 @@
 #include <chrono>
 
 #include "book.h"
+#include "nnue.h"
 
 // --- Global Options ---
 ChessWizardOptions OPTIONS = {
@@ -35,6 +36,76 @@ void init_all() {
     init_attacks();
     init_zobrist_keys();
     TT.resize(OPTIONS.tt_size_mb);
+}
+
+void run_tests() {
+    std::cout << "Running unit tests..." << std::endl;
+
+    // Zobrist invariance test
+    Position pos;
+    pos.set_from_fen(START_FEN);
+    uint64_t original_key = pos.hash_key;
+
+    // Generate moves
+    MoveList moves;
+    generate_moves(pos, moves);
+
+    if (!moves.empty()) {
+        Move m = moves[0];
+        pos.make_move(m);
+        pos.unmake_move(m);
+        if (pos.hash_key == original_key) {
+            std::cout << "Zobrist invariance: PASS" << std::endl;
+        } else {
+            std::cout << "Zobrist invariance: FAIL" << std::endl;
+        }
+    }
+
+    // NNUE parity test (if NNUE loaded)
+    if (NNUE::nnue_available) {
+        pos.set_from_fen(START_FEN);
+        NNUE::nnue_evaluator.reset(pos);
+        int full_eval = NNUE::nnue_evaluator.evaluate(WHITE);
+
+        generate_moves(pos, moves);
+        if (!moves.empty()) {
+            Move m = moves[0];
+            pos.make_move(m);
+            NNUE::nnue_evaluator.update_make(pos, m);
+            int inc_eval = NNUE::nnue_evaluator.evaluate(WHITE);
+            pos.unmake_move(m);
+            NNUE::nnue_evaluator.update_unmake(pos, m);
+
+            if (full_eval == inc_eval) {
+                std::cout << "NNUE parity: PASS" << std::endl;
+            } else {
+                std::cout << "NNUE parity: FAIL (" << full_eval << " vs " << inc_eval << ")" << std::endl;
+            }
+        }
+    } else {
+        std::cout << "NNUE not loaded, skipping parity test" << std::endl;
+    }
+
+    std::cout << "Tests completed." << std::endl;
+}
+
+void run_integration_tests() {
+    std::cout << "Running integration tests..." << std::endl;
+
+    Position pos;
+    pos.set_from_fen(START_FEN);
+    std::vector<uint64_t> targets = {20, 400, 8902, 197281, 4865609, 119060324};
+
+    for (int d = 1; d <= 6; ++d) {
+        uint64_t nodes = perft(d, pos);
+        if (nodes == targets[d-1]) {
+            std::cout << "Perft " << d << ": PASS (" << nodes << ")" << std::endl;
+        } else {
+            std::cout << "Perft " << d << ": FAIL (" << nodes << " vs " << targets[d-1] << ")" << std::endl;
+        }
+    }
+
+    std::cout << "Integration tests completed." << std::endl;
 }
 
 // --- C-API Implementation ---
@@ -183,6 +254,26 @@ void cli_loop() {
             std::cout << "Invalid move. Exiting." << std::endl;
             return;
         }
+    } else {
+        // User started, engine plays black, suggest first move
+        SearchLimits limits;
+        limits.movetime = 5000;
+        limits.max_depth = 64;
+
+        SearchResult result = search_position(pos, limits, &OPTIONS);
+
+        std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
+        for (size_t i = 0; i < result.pv_uci.size(); ++i) {
+            std::cout << "\"" << result.pv_uci[i] << "\"";
+            if (i < result.pv_uci.size() - 1) std::cout << ",";
+        }
+        std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+
+        std::cout << "Best: " << result.best_move_uci << "  PV: ";
+        for (const auto& m : result.pv_uci) std::cout << m << " ";
+        std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+
+        pos.make_move(get_move_from_uci(result.best_move_uci, pos));
     }
 
     std::cout << "Chess Wizard ready. Enter move or 'quit'." << std::endl;
@@ -226,12 +317,15 @@ void cli_loop() {
     }
 }
 
+
 int main(int argc, char* argv[]) {
     init_all();
     
     // Parse args
     bool is_cli = false;
     bool is_bench = false;
+    bool is_test = false;
+    bool is_integration_test = false;
     int bench_tt_size = 32;
     int bench_time_ms = 10000;
     std::string bench_position = START_FEN;
@@ -240,6 +334,10 @@ int main(int argc, char* argv[]) {
         std::string arg = argv[i];
         if (arg == "--cli") {
             is_cli = true;
+        } else if (arg == "--test") {
+            is_test = true;
+        } else if (arg == "--integration-test") {
+            is_integration_test = true;
         } else if (arg == "--bench") {
             is_bench = true;
             // Parse bench options
@@ -258,6 +356,16 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+    }
+
+    if (is_test) {
+        run_tests();
+        return 0;
+    }
+
+    if (is_integration_test) {
+        run_integration_tests();
+        return 0;
     }
 
     if (is_bench) {

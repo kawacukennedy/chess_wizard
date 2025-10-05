@@ -24,7 +24,6 @@ struct Network {
 // Accumulator for incremental updates
 struct Accumulator {
     std::vector<int16_t> hidden; // size = HIDDEN_SIZE
-    bool active[2]; // White and Black king are on the board
 };
 
 // Main NNUE evaluation class

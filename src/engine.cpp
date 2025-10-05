@@ -240,6 +240,7 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
 
     int moves_searched = 0;
     int best_score = -1000000;
+    int second_best = -1000000;
     Move best_move = Move(0);
     uint8_t tt_flag = TT_UPPER;
 
@@ -275,8 +276,11 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
         pos.unmake_move(move);
 
         if (score > best_score) {
+            second_best = best_score;
             best_score = score;
             best_move = move;
+        } else if (score > second_best) {
+            second_best = score;
         }
 
         if (best_score >= beta) {
@@ -305,6 +309,15 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
 
     if (moves_searched == 0) {
         return in_check ? -(1000000 - ply) : 0;
+    }
+
+    // Singular extension
+    if (best_score - second_best >= 60 * depth && depth < 60) {
+        int extended_score = search(alpha, beta, depth + 1, ply, pos, do_null);
+        if (abs(extended_score) < 1000000) {
+            best_score = extended_score;
+            if (best_score > alpha) alpha = best_score;
+        }
     }
 
     int store_score = best_score;
@@ -342,6 +355,10 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
 
     RootPosition = pos;
     Limits = limits;
+    // Short time mode
+    if (Limits.movetime < 100) {
+        Limits.max_depth = std::min(Limits.max_depth, 6);
+    }
     clear_search_globals();
     start_time = std::chrono::steady_clock::now();
 
@@ -456,6 +473,13 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     }
 
     result.info_flags = 0;
+
+    // Resignation logic
+    if (result.depth >= 12 && result.nodes >= 200000 && result.win_prob <= opts->resign_threshold && !(result.info_flags & TB_OVERRIDE)) {
+        result.info_flags |= RESIGN_RECOMMENDED;
+        // Optionally, set best_move_uci to empty to indicate resignation
+        result.best_move_uci[0] = '\0';
+    }
 
     return result;
 }

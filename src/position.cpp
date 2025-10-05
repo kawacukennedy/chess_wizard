@@ -7,12 +7,7 @@
 #include <sstream>
 #include <cctype>
 
-// Helper function to get the color of a piece type
-Color get_piece_color(PieceType pt) {
-    if (pt >= WP && pt <= WK) return WHITE;
-    if (pt >= BP && pt <= BK) return BLACK;
-    return NO_COLOR;
-}
+
 
 // Helper function to convert PieceType to char
 char piece_to_char(PieceType pt) {

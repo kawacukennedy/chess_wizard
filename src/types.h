@@ -105,6 +105,11 @@ struct SearchResult {
     uint64_t nodes;
     int time_ms;
     uint8_t info_flags; // bitfield using InfoFlags enum
+    // Error reporting
+    int error_code;
+    char error_message[256];
+    char last_valid_move[8];
+    uint64_t debug_zobrist;
 };
 
 struct ChessWizardOptions {
@@ -133,6 +138,11 @@ enum Color {
     BOTH,
     NO_COLOR
 };
+
+// Helper function to get color of a piece
+inline Color get_piece_color(PieceType pt) {
+    return (pt >= BP) ? BLACK : WHITE;
+}
 
 enum GenericPieceType {
     PAWN,

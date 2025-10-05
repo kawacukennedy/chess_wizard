@@ -32,8 +32,33 @@ bool Evaluator::init(const char* path) {
         return false;
     }
 
-    // Simplified loader based on spec
-    // Real implementation would need more robust error checking
+    // Read header as per spec
+    char magic[9] = {0};
+    file.read(magic, 8);
+    if (std::string(magic) != "CWNNUEv1") {
+        std::cout << "info string NNUE: invalid magic header." << std::endl;
+        initialized = false;
+        nnue_available = false;
+        return false;
+    }
+
+    int32_t input_size, hidden_size, output_size;
+    file.read(reinterpret_cast<char*>(&input_size), sizeof(int32_t));
+    file.read(reinterpret_cast<char*>(&hidden_size), sizeof(int32_t));
+    file.read(reinterpret_cast<char*>(&output_size), sizeof(int32_t));
+
+    if (input_size != INPUT_SIZE || hidden_size != HIDDEN_SIZE || output_size != 1) {
+        std::cout << "info string NNUE: network size mismatch." << std::endl;
+        initialized = false;
+        nnue_available = false;
+        return false;
+    }
+
+    // Skip quant_params for now (assume int16)
+    int32_t quant_params;
+    file.read(reinterpret_cast<char*>(&quant_params), sizeof(int32_t));
+
+    // Read weights
     net.feature_weights.resize(INPUT_SIZE * HIDDEN_SIZE);
     net.feature_bias.resize(HIDDEN_SIZE);
     net.output_weights.resize(HIDDEN_SIZE);
@@ -42,6 +67,10 @@ bool Evaluator::init(const char* path) {
     file.read(reinterpret_cast<char*>(net.feature_bias.data()), HIDDEN_SIZE * sizeof(int16_t));
     file.read(reinterpret_cast<char*>(net.output_weights.data()), HIDDEN_SIZE * sizeof(int16_t));
     file.read(reinterpret_cast<char*>(&net.output_bias), sizeof(int16_t));
+
+    // Skip checksum for now
+    uint32_t checksum;
+    file.read(reinterpret_cast<char*>(&checksum), sizeof(uint32_t));
 
     if (!file) {
         std::cout << "info string NNUE: error reading file." << std::endl;
@@ -60,8 +89,6 @@ void Evaluator::reset(const Position& pos) {
     if (!initialized) return;
 
     acc.hidden.assign(net.feature_bias.begin(), net.feature_bias.end());
-    acc.active[WHITE] = false;
-    acc.active[BLACK] = false;
 
     for (int pt_idx = 0; pt_idx < 12; ++pt_idx) {
         Bitboard bb = pos.piece_bitboards[pt_idx];
