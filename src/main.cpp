@@ -145,6 +145,46 @@ void cli_loop() {
     Position pos;
     pos.set_from_fen(START_FEN);
 
+    std::cout << "Did you start the game? (y/n): ";
+    std::string response;
+    std::getline(std::cin, response);
+    bool user_started = (response == "y" || response == "Y");
+
+    if (!user_started) {
+        // Opponent started, ask for opponent's first move
+        std::cout << "Enter opponent's first move (UCI): ";
+        std::string opp_move_str;
+        std::getline(std::cin, opp_move_str);
+        Move opp_move = get_move_from_uci(opp_move_str, pos);
+        if (opp_move.value != 0) {
+            pos.make_move(opp_move);
+            std::cout << "Applied opponent's move: " << opp_move_str << std::endl;
+
+            // Engine's first move
+            SearchLimits limits;
+            limits.movetime = 5000;
+            limits.max_depth = 64;
+
+            SearchResult result = search_position(pos, limits, &OPTIONS);
+
+            std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
+            for (size_t i = 0; i < result.pv_uci.size(); ++i) {
+                std::cout << "\"" << result.pv_uci[i] << "\"";
+                if (i < result.pv_uci.size() - 1) std::cout << ",";
+            }
+            std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+
+            std::cout << "Best: " << result.best_move_uci << "  PV: ";
+            for (const auto& m : result.pv_uci) std::cout << m << " ";
+            std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+
+            pos.make_move(get_move_from_uci(result.best_move_uci, pos));
+        } else {
+            std::cout << "Invalid move. Exiting." << std::endl;
+            return;
+        }
+    }
+
     std::cout << "Chess Wizard ready. Enter move or 'quit'." << std::endl;
 
     std::string line;
@@ -176,6 +216,9 @@ void cli_loop() {
             std::cout << "Best: " << result.best_move_uci << "  PV: ";
             for (const auto& m : result.pv_uci) std::cout << m << " ";
             std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+
+            // Apply engine's move for next input
+            pos.make_move(get_move_from_uci(result.best_move_uci, pos));
 
         } else {
             std::cout << "Invalid move or command." << std::endl;
