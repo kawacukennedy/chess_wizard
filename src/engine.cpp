@@ -195,8 +195,32 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
     alpha = std::max(alpha, -(1000000 - ply));
     beta = std::min(beta, 1000000 - ply);
     if (alpha >= beta) {
-        return alpha;
+    return alpha;
+}
+
+// Monte Carlo rollout for tie-break
+std::tuple<int, int, int> rollout(Position pos, int max_depth) {
+    int ply = 0;
+    while (ply < max_depth) {
+        MoveList moves;
+        generate_moves(pos, moves);
+        if (moves.empty()) {
+            if (pos.is_check()) {
+                return {pos.side_to_move == BLACK ? 1 : 0, pos.side_to_move == WHITE ? 1 : 0, 0};
+            } else {
+                return {0, 0, 1};
+            }
+        }
+        // Random move for simplicity (spec requires NNUE-based policy, but stub for now)
+        Move m = moves[rand() % moves.size()];
+        pos.make_move(m);
+        ply++;
     }
+    int eval = evaluate(pos);
+    if (eval > 0) return {1, 0, 0};
+    else if (eval < 0) return {0, 1, 0};
+    else return {0, 0, 1};
+}
 
     Move tt_move = Move(0);
     TTEntry* tt_entry = TT.probe(pos.hash_key);
