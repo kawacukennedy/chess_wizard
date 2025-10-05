@@ -19,9 +19,23 @@ There are many ways to contribute to Chess Wizard, including:
 
 Please refer to the `README.md` file for instructions on how to build and run the project.
 
+### Testing
+
+Before submitting a pull request, ensure all tests pass:
+
+- Run unit tests: `./chess_wizard --test`
+- Run integration tests: `./chess_wizard --integration-test`
+
+Add tests for new features or bug fixes as appropriate.
+
 ## Coding Style
 
-Please follow the existing coding style in the project. We use a consistent style to maintain readability and ease of maintenance.
+Please follow the existing coding style in the project. We use a consistent style to maintain readability and ease of maintenance. Key guidelines:
+
+- Use C++20 features where beneficial.
+- Prefer `const` and references for parameters.
+- Use meaningful variable names.
+- Comment complex logic, but avoid over-commenting obvious code.
 
 ## Pull Request Process
 
