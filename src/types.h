@@ -27,30 +27,30 @@ enum PieceType : uint8_t {
     NO_PIECE = 15
 };
 
-// Move representation (32-bit)
+// Move representation (32-bit) as per specification
 class Move {
 public:
     uint32_t value;
 
     enum MoveFlag : uint8_t {
         NONE = 0,
-        EN_PASSANT_FLAG = 1 << 0,
-        CASTLING_FLAG = 1 << 1,
-        DOUBLE_PAWN_PUSH_FLAG = 1 << 2
+        EN_PASSANT = 1 << 0,
+        CASTLING = 1 << 1,
+        DOUBLE_PAWN_PUSH = 1 << 2
     };
 
     enum PromotionType : uint8_t {
         NO_PROMOTION = 0,
-        KNIGHT_PROMOTION = 1,
-        BISHOP_PROMOTION = 2,
-        ROOK_PROMOTION = 3,
-        QUEEN_PROMOTION = 4
+        PROMOTION_N = 1,
+        PROMOTION_B = 2,
+        PROMOTION_R = 3,
+        PROMOTION_Q = 4
     };
 
     Move() : value(0) {}
     Move(uint32_t val) : value(val) {}
 
-    // Getters
+    // Getters from spec
     Square from() const { return static_cast<Square>((value >> 0) & 0x3F); }
     Square to() const { return static_cast<Square>((value >> 6) & 0x3F); }
     PieceType moving_piece() const { return static_cast<PieceType>((value >> 12) & 0xF); }
@@ -59,7 +59,7 @@ public:
     uint8_t flags() const { return static_cast<uint8_t>((value >> 23) & 0x7); }
     uint8_t ordering_hint() const { return static_cast<uint8_t>((value >> 26) & 0x3F); }
 
-    // Setters (for construction)
+    // Setters
     void set_from(Square s) { value = (value & ~0x3F) | (static_cast<uint32_t>(s) << 0); }
     void set_to(Square s) { value = (value & ~(0x3F << 6)) | (static_cast<uint32_t>(s) << 6); }
     void set_moving_piece(PieceType p) { value = (value & ~(0xF << 12)) | (static_cast<uint32_t>(p) << 12); }
@@ -68,36 +68,43 @@ public:
     void set_flags(uint8_t f) { value = (value & ~(0x7 << 23)) | (static_cast<uint32_t>(f) << 23); }
     void set_ordering_hint(uint8_t h) { value = (value & ~(0x3F << 26)) | (static_cast<uint32_t>(h) << 26); }
 
-    // Helper to check specific flags
-    bool is_en_passant() const { return (flags() & EN_PASSANT_FLAG); }
-    bool is_castling() const { return (flags() & CASTLING_FLAG); }
-    bool is_double_push() const { return (flags() & DOUBLE_PAWN_PUSH_FLAG); }
-
-    // Check if move is a capture (captured_piece != NO_PIECE)
+    // Helpers
+    bool is_en_passant() const { return (flags() & EN_PASSANT); }
+    bool is_castling() const { return (flags() & CASTLING); }
+    bool is_double_push() const { return (flags() & DOUBLE_PAWN_PUSH); }
     bool is_capture() const { return captured_piece() != NO_PIECE; }
-    // Check if move is a promotion (promotion != NO_PROMOTION)
     bool is_promotion() const { return promotion() != NO_PROMOTION; }
 
-    // Comparison operators
+    // Comparison
     bool operator==(const Move& other) const { return value == other.value; }
     bool operator!=(const Move& other) const { return value != other.value; }
 
-    // Convert move to UCI string (e.g., e2e4, e7e8q)
     std::string to_uci_string() const;
 };
+
+using MoveList = std::vector<Move>;
 
 // Max ply in search
 const int MAX_PLY = 128;
 
+// Search result info flags enum
+enum InfoFlags : uint8_t {
+    NO_INFO_FLAG = 0,
+    TB_OVERRIDE = 1 << 0,
+    BOOK_MOVE = 1 << 1,
+    RESIGN_RECOMMENDED = 1 << 2
+};
+
 struct SearchResult {
     char best_move_uci[8];
-    char pv_uci[MAX_PLY * 8]; // Assuming MAX_PLY moves, each 8 chars (e.g., e2e4q)
+    std::vector<std::string> pv_uci;
     int32_t score_cp;
     double win_prob;
+    double win_prob_stddev;
     int depth;
     uint64_t nodes;
     int time_ms;
-    uint8_t info_flags; // bitfield
+    uint8_t info_flags; // bitfield using InfoFlags enum
 };
 
 struct ChessWizardOptions {

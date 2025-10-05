@@ -2,14 +2,15 @@
 #define MOVEGEN_H
 
 #include "types.h"
-#include <vector>
 
 // Forward declaration
 class Position;
 
-// Use a std::vector for the move list for simplicity.
-// For performance, a fixed-size array or custom allocator could be used.
-using MoveList = std::vector<Move>;
+// Use fixed-size arrays for move lists as per specification.
+// Do NOT allocate on heap during search.
+const int MAX_MOVES_PER_PLY = 256; // Max pseudo-legal moves
+const int MAX_CAPTURES_PER_PLY = 128; // Max captures
+const int MAX_QUIETS_PER_PLY = 128; // Max quiet moves
 
 // Main move generation function
 // Fills the provided MoveList with pseudo-legal moves for the given position.

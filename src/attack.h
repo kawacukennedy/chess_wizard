@@ -3,6 +3,9 @@
 
 #include "bitboard.h"
 
+// Forward declaration
+class Position;
+
 // --- Attack Table Declarations ---
 extern Bitboard PAWN_ATTACKS[2][64];
 extern Bitboard KNIGHT_ATTACKS[64];
@@ -23,5 +26,8 @@ Bitboard get_piece_attacks(PieceType pt, Square sq, Bitboard blockers);
 // Sliding piece attack getters
 Bitboard get_bishop_attacks(Square sq, Bitboard blockers);
 Bitboard get_rook_attacks(Square sq, Bitboard blockers);
+
+// --- Static Exchange Evaluation ---
+int see(const Position& pos, Move move);
 
 #endif // ATTACK_H

@@ -64,10 +64,10 @@ Move Book::get_move(uint64_t hash) {
     Move::PromotionType promo_type = Move::NO_PROMOTION;
     if (promotion_piece != 0) {
         switch (promotion_piece) {
-            case 1: promo_type = Move::KNIGHT_PROMOTION; break;
-            case 2: promo_type = Move::BISHOP_PROMOTION; break;
-            case 3: promo_type = Move::ROOK_PROMOTION; break;
-            case 4: promo_type = Move::QUEEN_PROMOTION; break;
+            case 1: promo_type = Move::PROMOTION_N; break;
+            case 2: promo_type = Move::PROMOTION_B; break;
+            case 3: promo_type = Move::PROMOTION_R; break;
+            case 4: promo_type = Move::PROMOTION_Q; break;
         }
     }
 

@@ -5,13 +5,31 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# --- Compiler and Feature Checks ---
+
+# Check for C++20 support
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message(FATAL_ERROR "GCC 10.0 or later is required for C++20 support.")
+endif()
+
+if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 12.0 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR "Clang 12.0 or later is required for C++20 support.")
+endif()
+
 # --- Compiler Flags as per Specification ---
+
+# Option to disable -march=native
+option(USE_MARCH_NATIVE "Enable -march=native for performance" ON)
 
 # General flags for all build types
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
 
 # Release flags for performance
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -funroll-loops -fomit-frame-pointer -fno-exceptions -fno-rtti -DNDEBUG")
+set(RELEASE_FLAGS "-O3 -flto -funroll-loops -fomit-frame-pointer -fno-exceptions -fno-rtti -DNDEBUG")
+if(USE_MARCH_NATIVE)
+    set(RELEASE_FLAGS "${RELEASE_FLAGS} -march=native")
+endif()
+set(CMAKE_CXX_FLAGS_RELEASE ${RELEASE_FLAGS})
 
 # Debug flags for sanity checking
 set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -fsanitize=address,undefined -DDEBUG")

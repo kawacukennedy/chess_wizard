@@ -47,6 +47,10 @@ public:
     // History stack for unmake_move
     std::vector<State> history;
 
+    // Zobrist history for threefold detection
+    uint64_t zobrist_history[MAX_PLY];
+    int history_ply;
+
     Position();
 
     // Set up position from FEN string

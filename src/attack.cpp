@@ -1,4 +1,6 @@
 #include "attack.h"
+#include "position.h"
+#include "types.h"
 
 // --- Precomputed Attack Tables ---
 Bitboard PAWN_ATTACKS[2][64];
@@ -131,4 +133,93 @@ void init_attacks() {
         KNIGHT_ATTACKS[sq] = mask_knight_attacks((Square)sq);
         KING_ATTACKS[sq] = mask_king_attacks((Square)sq);
     }
+}
+
+// Piece values for SEE (centipawns)
+const int SEE_VALUES[12] = {100, 320, 330, 500, 900, 0, 100, 320, 330, 500, 900, 0};
+
+int see(const Position& pos, Move move) {
+    Square from = move.from();
+    Square to = move.to();
+    PieceType moving = move.moving_piece();
+    PieceType captured = move.captured_piece();
+
+    int gain[32];
+    int d = 0;
+    Bitboard may_xray = pos.piece_bitboards[WB] | pos.piece_bitboards[BB] | pos.piece_bitboards[WR] | pos.piece_bitboards[BR] | pos.piece_bitboards[WQ] | pos.piece_bitboards[BQ];
+    Bitboard from_bb = 1ULL << from;
+    Bitboard occ = pos.occupancy_bitboards[BOTH];
+    Bitboard attackers = 0;
+
+    // Initial capture
+    gain[d] = SEE_VALUES[captured];
+    d++;
+
+    // Find all attackers
+    attackers |= (PAWN_ATTACKS[WHITE][to] & pos.piece_bitboards[BP]) | (PAWN_ATTACKS[BLACK][to] & pos.piece_bitboards[WP]);
+    attackers |= (KNIGHT_ATTACKS[to] & (pos.piece_bitboards[WN] | pos.piece_bitboards[BN]));
+    attackers |= (KING_ATTACKS[to] & (pos.piece_bitboards[WK] | pos.piece_bitboards[BK]));
+
+    Bitboard bishops = pos.piece_bitboards[WB] | pos.piece_bitboards[BB];
+    Bitboard rooks = pos.piece_bitboards[WR] | pos.piece_bitboards[BR];
+    Bitboard queens = pos.piece_bitboards[WQ] | pos.piece_bitboards[BQ];
+
+    if (bishops | queens) attackers |= get_bishop_attacks(to, occ) & (bishops | queens);
+    if (rooks | queens) attackers |= get_rook_attacks(to, occ) & (rooks | queens);
+
+    // Remove the moving piece if it's still on from (but since we're simulating, assume it's moved)
+    attackers &= ~from_bb;
+
+    Color side = (moving >= BP) ? BLACK : WHITE;
+
+    occ ^= from_bb; // Remove moving piece
+    if (captured != NO_PIECE) occ ^= (1ULL << to); // Remove captured piece
+
+    while (attackers) {
+        // Find least valuable attacker
+        PieceType pt = NO_PIECE;
+        Bitboard attacker_bb = 0;
+        int min_value = 10000;
+
+        for (int p = WP; p <= BK; ++p) {
+            Bitboard bb = attackers & pos.piece_bitboards[p];
+            if (bb) {
+                int val = SEE_VALUES[p];
+                if (val < min_value) {
+                    min_value = val;
+                    pt = (PieceType)p;
+                    attacker_bb = bb & -bb; // LSB
+                }
+            }
+        }
+
+        if (pt == NO_PIECE) break;
+
+        // Add capture value
+        gain[d] = SEE_VALUES[pt] - gain[d - 1];
+        d++;
+
+        // Update occupancy
+        occ ^= attacker_bb;
+
+        // Add discovered attacks
+        if (may_xray & attacker_bb) {
+            Bitboard xray_attackers = 0;
+            if (bishops | queens) xray_attackers |= get_bishop_attacks(to, occ) & (bishops | queens);
+            if (rooks | queens) xray_attackers |= get_rook_attacks(to, occ) & (rooks | queens);
+            attackers |= xray_attackers;
+        }
+
+        attackers &= ~attacker_bb;
+        attackers &= occ; // Only pieces still on board
+
+        side = (side == WHITE) ? BLACK : WHITE;
+    }
+
+    // Negamax the gains
+    while (--d) {
+        gain[d - 1] = -std::max(-gain[d - 1], gain[d]);
+    }
+
+    return gain[0];
 }

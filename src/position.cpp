@@ -73,6 +73,7 @@ Position::Position() {
     halfmove_clock = 0;
     fullmove_number = 1;
     hash_key = 0ULL;
+    history_ply = 0;
 }
 
 void Position::set_from_fen(const std::string& fen) {
@@ -270,6 +271,9 @@ std::string Position::to_fen_string() const {
 }
 
 void Position::make_move(Move move) {
+    // Save zobrist for threefold
+    zobrist_history[history_ply++] = hash_key;
+
     // Save current state for unmake_move
     history.push_back({
         castling_rights,
@@ -287,7 +291,7 @@ void Position::make_move(Move move) {
     uint8_t flags = move.flags();
 
     // Update halfmove clock (reset on pawn move or capture)
-    if (piece_moved == WP || piece_moved == BP || captured_piece != NO_PIECE || (flags & Move::EN_PASSANT_FLAG)) {
+    if (piece_moved == WP || piece_moved == BP || captured_piece != NO_PIECE || (flags & Move::EN_PASSANT)) {
         halfmove_clock = 0;
     } else {
         halfmove_clock++;
@@ -299,7 +303,7 @@ void Position::make_move(Move move) {
     clear_bit(occupancy_bitboards[BOTH], from_sq);
     hash_key ^= Zobrist.piece_keys[piece_moved][from_sq];
 
-    if (captured_piece != NO_PIECE && !(flags & Move::EN_PASSANT_FLAG)) {
+    if (captured_piece != NO_PIECE && !(flags & Move::EN_PASSANT)) {
         clear_bit(piece_bitboards[captured_piece], to_sq);
         clear_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], to_sq);
         clear_bit(occupancy_bitboards[BOTH], to_sq);
@@ -322,7 +326,7 @@ void Position::make_move(Move move) {
     }
 
     // Handle castling
-    if (flags & Move::CASTLING_FLAG) {
+    if (flags & Move::CASTLING) {
         if (side_to_move == WHITE) {
             if (to_sq == G1) { // White kingside castling
                 clear_bit(piece_bitboards[WR], H1);
@@ -371,7 +375,7 @@ void Position::make_move(Move move) {
     }
 
     // Handle en passant capture
-    if (flags & Move::EN_PASSANT_FLAG) {
+    if (flags & Move::EN_PASSANT) {
         Square captured_pawn_sq = (Square)((side_to_move == WHITE) ? (to_sq - 8) : (to_sq + 8));
         PieceType pawn_type = (side_to_move == WHITE) ? BP : WP;
 
@@ -385,7 +389,7 @@ void Position::make_move(Move move) {
     if (en_passant_sq != NO_SQUARE) {
         hash_key ^= Zobrist.en_passant_keys[get_file(en_passant_sq)];
     }
-    if (flags & Move::DOUBLE_PAWN_PUSH_FLAG) {
+    if (flags & Move::DOUBLE_PAWN_PUSH) {
         en_passant_sq = (Square)((side_to_move == WHITE) ? (to_sq - 8) : (to_sq + 8));
         hash_key ^= Zobrist.en_passant_keys[get_file(en_passant_sq)];
     } else {
@@ -489,7 +493,7 @@ void Position::unmake_move(Move move) {
     set_bit(occupancy_bitboards[side_to_move], from_sq);
     set_bit(occupancy_bitboards[BOTH], from_sq);
 
-    if (captured_piece != NO_PIECE && !(flags & Move::EN_PASSANT_FLAG)) {
+    if (captured_piece != NO_PIECE && !(flags & Move::EN_PASSANT)) {
         set_bit(piece_bitboards[captured_piece], to_sq);
         set_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], to_sq);
         set_bit(occupancy_bitboards[BOTH], to_sq);
@@ -500,7 +504,7 @@ void Position::unmake_move(Move move) {
         set_bit(piece_bitboards[piece_moved], to_sq);
     }
 
-    if (flags & Move::CASTLING_FLAG) {
+    if (flags & Move::CASTLING) {
         if (side_to_move == WHITE) {
             if (to_sq == G1) {
                 clear_bit(piece_bitboards[WR], F1);
@@ -540,7 +544,7 @@ void Position::unmake_move(Move move) {
         }
     }
 
-    if (flags & Move::EN_PASSANT_FLAG) {
+    if (flags & Move::EN_PASSANT) {
         Square captured_pawn_sq = (Square)((side_to_move == WHITE) ? (to_sq - 8) : (to_sq + 8));
         PieceType pawn_type = (side_to_move == WHITE) ? BP : WP;
 
@@ -548,4 +552,6 @@ void Position::unmake_move(Move move) {
         set_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], captured_pawn_sq);
         set_bit(occupancy_bitboards[BOTH], captured_pawn_sq);
     }
+
+    history_ply--;
 }

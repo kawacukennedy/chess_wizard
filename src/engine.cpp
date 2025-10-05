@@ -5,16 +5,69 @@
 #include "move.h"
 #include "nnue.h"
 #include "types.h"
+#include "attack.h"
+#include "position.h"
 #include <iostream>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <vector>
 
 // --- Search Globals ---
 SearchLimits Limits;
 Position RootPosition;
 uint64_t NodeCount;
 std::atomic<bool> StopSearch;
+
+// --- Win Probability Calibration ---
+const double WIN_PROB_K = 0.0045;
+const double WIN_PROB_OFFSET = 0.0;
+
+// --- Mate Score ---
+const int MATE_VALUE = 1000000;
+
+// --- Draw Detection ---
+bool is_draw(const Position& pos) {
+    // Threefold repetition
+    int count = 0;
+    for (int i = 0; i < pos.history_ply; ++i) {
+        if (pos.zobrist_history[i] == pos.hash_key) {
+            count++;
+            if (count >= 2) return true; // 3rd occurrence
+        }
+    }
+
+    // 50-move rule
+    if (pos.halfmove_clock >= 100) return true;
+
+    // Insufficient material
+    int piece_count[12] = {0};
+    for (int p = WP; p <= BK; ++p) {
+        piece_count[p] = __builtin_popcountll(pos.piece_bitboards[p]);
+    }
+    int total_pieces = 0;
+    for (int p = 0; p < 12; ++p) total_pieces += piece_count[p];
+
+    // King vs king
+    if (total_pieces == 2) return true;
+
+    // King + minor vs king
+    if (total_pieces == 3) {
+        if (piece_count[WN] || piece_count[WB] || piece_count[BN] || piece_count[BB]) return true;
+    }
+
+    // King + two minors vs king (but not same color bishops)
+    if (total_pieces == 4) {
+        int minors = piece_count[WN] + piece_count[WB] + piece_count[BN] + piece_count[BB];
+        if (minors == 2) {
+            // Check if bishops are same color
+            if (piece_count[WB] == 2 || piece_count[BB] == 2) return false; // Different colors
+            return true;
+        }
+    }
+
+    return false;
+}
 
 // --- PV Table ---
 Move PV_TABLE[MAX_PLY][MAX_PLY];
@@ -28,6 +81,16 @@ int HISTORY_TABLE[12][64];
 
 // --- Time Management ---
 std::chrono::steady_clock::time_point start_time;
+
+double sigmoid_win_prob(int cp_score) {
+    if (cp_score >= MATE_VALUE - MAX_PLY) {
+        return 1.0 - 1e-12; // Side to move mates
+    } else if (cp_score <= -MATE_VALUE + MAX_PLY) {
+        return 1e-12; // Opponent mates
+    }
+    double x = (cp_score + WIN_PROB_OFFSET) / 100.0;
+    return 1.0 / (1.0 + std::exp(-WIN_PROB_K * x));
+}
 
 void check_time() {
     if ((NodeCount & 4095) == 0) {
@@ -56,9 +119,11 @@ void clear_search_globals() {
     }
 }
 
-int score_move(Move move, int ply, Move tt_move) {
+int score_move(Move move, int ply, Move tt_move, const Position& pos) {
     if (move == tt_move) return 1 << 20;
     if (move.is_capture()) {
+        int see_score = see(pos, move);
+        if (see_score < 0) return 100000 + see_score; // Demote losing captures
         return 100000 + (move.captured_piece() * 10) - move.moving_piece();
     }
     if (move == KILLER_MOVES[ply][0]) return 8000;
@@ -66,15 +131,19 @@ int score_move(Move move, int ply, Move tt_move) {
     return HISTORY_TABLE[move.moving_piece()][move.to()];
 }
 
-void order_moves(MoveList& moves, int ply, Move tt_move) {
+void order_moves(MoveList& moves, int ply, Move tt_move, const Position& pos) {
     std::sort(moves.begin(), moves.end(), [&](Move a, Move b) {
-        return score_move(a, ply, tt_move) > score_move(b, ply, tt_move);
+        return score_move(a, ply, tt_move, pos) > score_move(b, ply, tt_move, pos);
     });
 }
 
 int quiescence(int alpha, int beta, int ply, Position& pos) {
     NodeCount++;
     if (StopSearch) return 0;
+
+    // Draw detection
+    if (is_draw(pos)) return 0;
+
     if (ply >= MAX_PLY) return evaluate(pos);
 
     int stand_pat = evaluate(pos);
@@ -84,7 +153,7 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     MoveList captures;
     generate_moves(pos, captures, true);
     Move tt_move = Move(0);
-    order_moves(captures, ply, tt_move);
+    order_moves(captures, ply, tt_move, pos);
 
     for (const auto& move : captures) {
         pos.make_move(move);
@@ -104,6 +173,9 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
     NodeCount++;
     check_time();
     if (StopSearch) return 0;
+
+    // Draw detection
+    if (is_draw(pos)) return 0;
 
     PV_LENGTH[ply] = ply;
 
@@ -164,7 +236,7 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null 
 
     MoveList moves;
     generate_moves(pos, moves);
-    order_moves(moves, ply, tt_move);
+    order_moves(moves, ply, tt_move, pos);
 
     int moves_searched = 0;
     int best_score = -1000000;
@@ -283,27 +355,42 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
         NNUE::nnue_evaluator.reset(pos);
     }
 
-    int alpha = -1000000;
-    int beta = 1000000;
+    int last_score = 0;
     int score = 0;
     int last_completed_depth = 0;
+    std::vector<int> depth_scores;
 
     for (int current_depth = 1; current_depth <= Limits.max_depth; ++current_depth) {
-        score = search(alpha, beta, current_depth, 0, pos);
+        int aspiration = std::max(80, 5 * current_depth);
+        int alpha = last_score - aspiration;
+        int beta = last_score + aspiration;
+
+        int expansions = 0;
+        while (expansions < 3) {
+            score = search(alpha, beta, current_depth, 0, pos);
+
+            if (StopSearch && current_depth > 1) {
+                break;
+            }
+
+            if (score > alpha && score < beta) {
+                // Search completed within window
+                break;
+            }
+
+            // Expand window
+            alpha = (score <= alpha) ? alpha - aspiration * (1 << expansions) : -1000000;
+            beta = (score >= beta) ? beta + aspiration * (1 << expansions) : 1000000;
+            expansions++;
+        }
 
         if (StopSearch && current_depth > 1) {
             break;
         }
 
-        if (score <= alpha || score >= beta) {
-            alpha = -1000000;
-            beta = 1000000;
-            score = search(alpha, beta, current_depth, 0, pos);
-        }
-
-        alpha = score - 80;
-        beta = score + 80;
+        last_score = score;
         last_completed_depth = current_depth;
+        depth_scores.push_back(score);
 
         auto end_time = std::chrono::steady_clock::now();
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
@@ -321,12 +408,9 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
         strncpy(result.best_move_uci, PV_TABLE[0][0].to_uci_string().c_str(), 7);
         result.best_move_uci[7] = '\0';
 
-        std::string pv_str;
         for (int i = 0; i < PV_LENGTH[0]; ++i) {
-            pv_str += PV_TABLE[0][i].to_uci_string() + " ";
+            result.pv_uci.push_back(PV_TABLE[0][i].to_uci_string());
         }
-        strncpy(result.pv_uci, pv_str.c_str(), sizeof(result.pv_uci) - 1);
-        result.pv_uci[sizeof(result.pv_uci) - 1] = '\0';
     }
 
     result.score_cp = score;
@@ -334,8 +418,43 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     result.nodes = NodeCount;
     auto final_time = std::chrono::steady_clock::now();
     result.time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(final_time - start_time).count();
-    
-    result.win_prob = 0.0;
+
+    result.win_prob = sigmoid_win_prob(score);
+
+    // Calculate uncertainty as stddev of depth scores
+    double stddev_cp = 0.0;
+    if (depth_scores.size() > 1) {
+        double mean = 0.0;
+        for (int s : depth_scores) mean += s;
+        mean /= depth_scores.size();
+        for (int s : depth_scores) stddev_cp += (s - mean) * (s - mean);
+        stddev_cp = std::sqrt(stddev_cp / (depth_scores.size() - 1));
+    }
+    result.win_prob_stddev = stddev_cp * WIN_PROB_K / 100.0;
+
+    // Move validation: verify best_move is in root legal moves
+    if (PV_LENGTH[0] > 0) {
+        MoveList legal_moves;
+        generate_legal_moves(pos, legal_moves);
+        bool is_legal = false;
+        for (const auto& m : legal_moves) {
+            if (m == PV_TABLE[0][0]) {
+                is_legal = true;
+                break;
+            }
+        }
+        if (!is_legal) {
+            // Fallback to highest-scoring legal move
+            if (!legal_moves.empty()) {
+                // Simple: take first legal move
+                Move fallback = legal_moves[0];
+                strncpy(result.best_move_uci, fallback.to_uci_string().c_str(), 7);
+                result.pv_uci.clear();
+                result.pv_uci.push_back(fallback.to_uci_string());
+            }
+        }
+    }
+
     result.info_flags = 0;
 
     return result;

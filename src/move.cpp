@@ -15,10 +15,10 @@ std::string square_to_string(Square sq) {
 // Convert PromotionType to char for promotion (e.g., QUEEN_PROMOTION -> 'q')
 char promotion_type_to_char(Move::PromotionType pt) {
     switch (pt) {
-        case Move::KNIGHT_PROMOTION: return 'n';
-        case Move::BISHOP_PROMOTION: return 'b';
-        case Move::ROOK_PROMOTION: return 'r';
-        case Move::QUEEN_PROMOTION: return 'q';
+        case Move::PROMOTION_N: return 'n';
+        case Move::PROMOTION_B: return 'b';
+        case Move::PROMOTION_R: return 'r';
+        case Move::PROMOTION_Q: return 'q';
         default: return ' '; // Should not happen for non-promotions
     }
 }
@@ -46,10 +46,10 @@ Move get_move_from_uci(const std::string& uci_str, const Position& pos) {
     if (uci_str.length() == 5) {
         char promo_char = uci_str[4];
         switch (promo_char) {
-            case 'n': promoted_type = Move::KNIGHT_PROMOTION; break;
-            case 'b': promoted_type = Move::BISHOP_PROMOTION; break;
-            case 'r': promoted_type = Move::ROOK_PROMOTION; break;
-            case 'q': promoted_type = Move::QUEEN_PROMOTION; break;
+            case 'n': promoted_type = Move::PROMOTION_N; break;
+            case 'b': promoted_type = Move::PROMOTION_B; break;
+            case 'r': promoted_type = Move::PROMOTION_R; break;
+            case 'q': promoted_type = Move::PROMOTION_Q; break;
             default: return Move(0); // Invalid promotion character
         }
     }

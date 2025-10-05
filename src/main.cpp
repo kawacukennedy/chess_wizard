@@ -10,6 +10,8 @@
 #include "zobrist.h"
 #include "tt.h"
 #include "types.h"
+#include "move.h"
+#include <chrono>
 
 #include "book.h"
 
@@ -139,16 +141,123 @@ void uci_loop() {
     }
 }
 
+void cli_loop() {
+    Position pos;
+    pos.set_from_fen(START_FEN);
+
+    std::cout << "Chess Wizard ready. Enter move or 'quit'." << std::endl;
+
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        if (line == "quit") break;
+
+        // Try to parse as move
+        Move move = get_move_from_uci(line, pos);
+        if (move.value != 0) {
+            pos.make_move(move);
+            std::cout << "Applied move: " << line << std::endl;
+
+            // Now suggest move
+            SearchLimits limits;
+            limits.movetime = 5000; // 5 seconds default
+            limits.max_depth = 64;
+
+            SearchResult result = search_position(pos, limits, &OPTIONS);
+
+            // Print JSON
+            std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
+            for (size_t i = 0; i < result.pv_uci.size(); ++i) {
+                std::cout << "\"" << result.pv_uci[i] << "\"";
+                if (i < result.pv_uci.size() - 1) std::cout << ",";
+            }
+            std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+
+            // Human-friendly line
+            std::cout << "Best: " << result.best_move_uci << "  PV: ";
+            for (const auto& m : result.pv_uci) std::cout << m << " ";
+            std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+
+        } else {
+            std::cout << "Invalid move or command." << std::endl;
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     init_all();
     
-    // Simple CLI mode check
-    if (argc > 1 && std::string(argv[1]) == "bench") {
-        // TODO: Implement benchmark from spec
-        std::cout << "Benchmark mode not implemented yet." << std::endl;
+    // Parse args
+    bool is_cli = false;
+    bool is_bench = false;
+    int bench_tt_size = 32;
+    int bench_time_ms = 10000;
+    std::string bench_position = START_FEN;
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--cli") {
+            is_cli = true;
+        } else if (arg == "--bench") {
+            is_bench = true;
+            // Parse bench options
+            for (int j = i + 1; j < argc; ++j) {
+                if (std::string(argv[j]) == "--tt-size" && j + 1 < argc) {
+                    bench_tt_size = std::stoi(argv[++j]);
+                } else if (std::string(argv[j]) == "--time" && j + 1 < argc) {
+                    std::string time_str = argv[++j];
+                    if (time_str.back() == 's') {
+                        bench_time_ms = std::stoi(time_str.substr(0, time_str.size() - 1)) * 1000;
+                    } else {
+                        bench_time_ms = std::stoi(time_str);
+                    }
+                } else if (std::string(argv[j]) == "--position" && j + 1 < argc) {
+                    bench_position = argv[++j];
+                }
+            }
+        }
+    }
+
+    if (is_bench) {
+        TT.resize(bench_tt_size);
+        Position pos;
+        pos.set_from_fen(bench_position);
+
+        auto start = std::chrono::steady_clock::now();
+        uint64_t total_nodes = 0;
+        int max_depth = 0;
+
+        while (true) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+            if (elapsed >= bench_time_ms) break;
+
+            SearchLimits limits;
+            limits.movetime = bench_time_ms - elapsed;
+            limits.max_depth = 64;
+
+            SearchResult result = search_position(pos, limits, &OPTIONS);
+            total_nodes += result.nodes;
+            max_depth = std::max(max_depth, result.depth);
+
+            if (result.nodes == 0) break;
+        }
+
+        auto end = std::chrono::steady_clock::now();
+        auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        double nps = total_nodes * 1000.0 / total_time;
+
+        std::cout << "Benchmark results:" << std::endl;
+        std::cout << "Total nodes: " << total_nodes << std::endl;
+        std::cout << "Max depth: " << max_depth << std::endl;
+        std::cout << "Time: " << total_time << " ms" << std::endl;
+        std::cout << "Nodes/sec: " << (uint64_t)nps << std::endl;
+
         return 0;
     }
 
-    uci_loop();
+    if (is_cli) {
+        cli_loop();
+    } else {
+        uci_loop();
+    }
     return 0;
 }
