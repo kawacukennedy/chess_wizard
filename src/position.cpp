@@ -303,7 +303,7 @@ void Position::make_move(Move move) {
     si.prev_zobrist = hash_key;
     si.eval_delta = 0; // TODO: compute incremental eval delta
     si.nnue_delta_count = 0; // TODO: nnue deltas
-    history.push_back(si);
+    history[history_size++] = si;
 
     // Update halfmove clock (reset on pawn move or capture)
     if (piece_moved == WP || piece_moved == BP || captured_piece != NO_PIECE || (flags & Move::EN_PASSANT)) {
@@ -460,7 +460,7 @@ void Position::make_null_move() {
     si.prev_zobrist = hash_key;
     si.eval_delta = 0;
     si.nnue_delta_count = 0;
-    history.push_back(si);
+    history[history_size++] = si;
 
     hash_key ^= Zobrist.side_to_move_key;
 
@@ -475,8 +475,7 @@ void Position::make_null_move() {
 }
 
 void Position::unmake_null_move() {
-    StateInfo si = history.back();
-    history.pop_back();
+    StateInfo si = history[--history_size];
 
     castling_rights = (CastlingRights)si.prev_castle;
     en_passant_sq = (Square)si.prev_ep_sq;
@@ -487,8 +486,7 @@ void Position::unmake_null_move() {
 }
 
 void Position::unmake_move(Move move) {
-    StateInfo si = history.back();
-    history.pop_back();
+    StateInfo si = history[--history_size];
 
     castling_rights = (CastlingRights)si.prev_castle;
     en_passant_sq = (Square)si.prev_ep_sq;
@@ -566,6 +564,82 @@ void Position::unmake_move(Move move) {
             }
         }
     }
+
+    if (flags & Move::EN_PASSANT) {
+        Square captured_pawn_sq = (Square)((side_to_move == WHITE) ? (to_sq - 8) : (to_sq + 8));
+        PieceType pawn_type = (side_to_move == WHITE) ? BP : WP;
+
+        set_bit(piece_bitboards[pawn_type], captured_pawn_sq);
+        set_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], captured_pawn_sq);
+        set_bit(occupancy_bitboards[BOTH], captured_pawn_sq);
+    }
+}
+
+    Square from_sq = move.from();
+    Square to_sq = move.to();
+    PieceType piece_moved = move.moving_piece();
+    PieceType captured_piece = move.captured_piece();
+    Move::PromotionType promoted_type = move.promotion();
+    uint8_t flags = move.flags();
+
+    clear_bit(piece_bitboards[piece_moved], to_sq);
+    clear_bit(occupancy_bitboards[side_to_move], to_sq);
+    clear_bit(occupancy_bitboards[BOTH], to_sq);
+
+    set_bit(piece_bitboards[piece_moved], from_sq);
+    set_bit(occupancy_bitboards[side_to_move], from_sq);
+    set_bit(occupancy_bitboards[BOTH], from_sq);
+
+    if (captured_piece != NO_PIECE && !(flags & Move::EN_PASSANT)) {
+        set_bit(piece_bitboards[captured_piece], to_sq);
+        set_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], to_sq);
+        set_bit(occupancy_bitboards[BOTH], to_sq);
+    }
+
+    if (move.is_promotion()) {
+        clear_bit(piece_bitboards[promotion_val_to_piece_type(promoted_type, side_to_move)], to_sq);
+        set_bit(piece_bitboards[piece_moved], to_sq);
+    }
+
+    // if (flags & Move::CASTLING) {
+    //     if (side_to_move == WHITE) {
+    //         if (to_sq == G1) {
+    //             clear_bit(piece_bitboards[WR], F1);
+    //             clear_bit(occupancy_bitboards[WHITE], F1);
+    //             clear_bit(occupancy_bitboards[BOTH], F1);
+
+    //             set_bit(piece_bitboards[WR], H1);
+    //             set_bit(occupancy_bitboards[WHITE], H1);
+    //             set_bit(occupancy_bitboards[BOTH], H1);
+    //         } else if (to_sq == C1) {
+    //             clear_bit(piece_bitboards[WR], D1);
+    //             clear_bit(occupancy_bitboards[WHITE], D1);
+    //             clear_bit(occupancy_bitboards[BOTH], D1);
+
+    //             set_bit(piece_bitboards[WR], A1);
+    //             set_bit(occupancy_bitboards[WHITE], A1);
+    //             set_bit(occupancy_bitboards[BOTH], A1);
+    //         }
+    //     } else { // Black
+    //         if (to_sq == G8) {
+    //             clear_bit(piece_bitboards[BR], F8);
+    //             clear_bit(occupancy_bitboards[BLACK], F8);
+    //             clear_bit(occupancy_bitboards[BOTH], F8);
+
+    //             set_bit(piece_bitboards[BR], H8);
+    //             set_bit(occupancy_bitboards[BLACK], H8);
+    //             set_bit(occupancy_bitboards[BOTH], H8);
+    //         } else if (to_sq == C8) {
+    //             clear_bit(piece_bitboards[BR], D8);
+    //             clear_bit(occupancy_bitboards[BLACK], D8);
+    //             clear_bit(occupancy_bitboards[BOTH], D8);
+
+    //             set_bit(piece_bitboards[BR], A8);
+    //             set_bit(occupancy_bitboards[BLACK], A8);
+    //             set_bit(occupancy_bitboards[BOTH], A8);
+    //         }
+    //     }
+    // }
 
     if (flags & Move::EN_PASSANT) {
         Square captured_pawn_sq = (Square)((side_to_move == WHITE) ? (to_sq - 8) : (to_sq + 8));

@@ -339,9 +339,9 @@ void cli_loop() {
             continue;
         }
         if (line == "undo") {
-            if (pos.history.size() >= 2) {
-                StateInfo si1 = pos.history[pos.history.size() - 1];
-                StateInfo si2 = pos.history[pos.history.size() - 2];
+            if (pos.history_size >= 2) {
+                StateInfo si1 = pos.history[pos.history_size - 1];
+                StateInfo si2 = pos.history[pos.history_size - 2];
                 Move m1 = si1.from == NO_SQUARE ? Move(0) : create_move((Square)si1.from, (Square)si1.to, (PieceType)si1.moving_piece, (PieceType)si1.captured_piece, si1.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si1.promoted_piece), si1.flags);
                 Move m2 = si2.from == NO_SQUARE ? Move(0) : create_move((Square)si2.from, (Square)si2.to, (PieceType)si2.moving_piece, (PieceType)si2.captured_piece, si2.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si2.promoted_piece), si2.flags);
                 pos.unmake_move(m1);

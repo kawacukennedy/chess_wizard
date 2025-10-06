@@ -186,13 +186,11 @@ int32_t Evaluator::evaluate(Color us) {
         int32_t hidden = std::max(0, acc.hidden[i]);
         score += hidden * net.output_weights[i];
     }
-    return score;
-}
 
     // Scale by 16 as per common NNUE implementations
-    output /= 16;
+    score /= 16;
 
-    return (us == WHITE) ? output : -output;
+    return (us == WHITE) ? score : -score;
 }
 
 } // namespace NNUE

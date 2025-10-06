@@ -55,7 +55,8 @@ public:
     uint64_t hash_key;
 
     // History stack for unmake_move
-    std::vector<StateInfo> history;
+    std::array<StateInfo, 1024> history;
+    size_t history_size = 0;
 
     Position();
 
