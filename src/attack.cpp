@@ -13,13 +13,12 @@ Bitboard ROOK_ATTACKS[64];
 
 Bitboard mask_pawn_attacks(Color side, Square sq) {
     Bitboard attacks = 0;
-    Bitboard b = 1ULL << sq;
     if (side == WHITE) {
-        if ((b << 7) & ~FILE_H_BB) attacks |= (b << 7);
-        if ((b << 9) & ~FILE_A_BB) attacks |= (b << 9);
+        if ((sq % 8) != 0) attacks |= (1ULL << (sq + 7));
+        if ((sq % 8) != 7) attacks |= (1ULL << (sq + 9));
     } else {
-        if ((b >> 9) & ~FILE_A_BB) attacks |= (b >> 9);
-        if ((b >> 7) & ~FILE_H_BB) attacks |= (b >> 7);
+        if ((sq % 8) != 0) attacks |= (1ULL << (sq - 9));
+        if ((sq % 8) != 7) attacks |= (1ULL << (sq - 7));
     }
     return attacks;
 }
@@ -27,28 +26,28 @@ Bitboard mask_pawn_attacks(Color side, Square sq) {
 Bitboard mask_knight_attacks(Square sq) {
     Bitboard attacks = 0;
     Bitboard b = 1ULL << sq;
-    if ((b >> 17) & ~FILE_H_BB) attacks |= (b >> 17);
-    if ((b >> 15) & ~FILE_A_BB) attacks |= (b >> 15);
-    if ((b >> 10) & ~FILE_GH_BB) attacks |= (b >> 10);
-    if ((b >> 6) & ~FILE_AB_BB) attacks |= (b >> 6);
-    if ((b << 17) & ~FILE_A_BB) attacks |= (b << 17);
-    if ((b << 15) & ~FILE_H_BB) attacks |= (b << 15);
-    if ((b << 10) & ~FILE_AB_BB) attacks |= (b << 10);
-    if ((b << 6) & ~FILE_GH_BB) attacks |= (b << 6);
+    if (sq >= 17 && (b >> 17) & ~FILE_H_BB) attacks |= (b >> 17);
+    if (sq >= 15 && (b >> 15) & ~FILE_A_BB) attacks |= (b >> 15);
+    if (sq >= 10 && (b >> 10) & ~FILE_GH_BB) attacks |= (b >> 10);
+    if (sq >= 6 && (b >> 6) & ~FILE_AB_BB) attacks |= (b >> 6);
+    if (sq <= 46 && (b << 17) & ~FILE_A_BB) attacks |= (b << 17);
+    if (sq <= 48 && (b << 15) & ~FILE_H_BB) attacks |= (b << 15);
+    if (sq <= 53 && (b << 10) & ~FILE_AB_BB) attacks |= (b << 10);
+    if (sq <= 57 && (b << 6) & ~FILE_GH_BB) attacks |= (b << 6);
     return attacks;
 }
 
 Bitboard mask_king_attacks(Square sq) {
     Bitboard attacks = 0;
     Bitboard b = 1ULL << sq;
-    if ((b >> 9) & ~FILE_H_BB) attacks |= (b >> 9);
-    if ((b >> 8)) attacks |= (b >> 8);
-    if ((b >> 7) & ~FILE_A_BB) attacks |= (b >> 7);
-    if ((b >> 1) & ~FILE_H_BB) attacks |= (b >> 1);
-    if ((b << 9) & ~FILE_A_BB) attacks |= (b << 9);
-    if ((b << 8)) attacks |= (b << 8);
-    if ((b << 7) & ~FILE_H_BB) attacks |= (b << 7);
-    if ((b << 1) & ~FILE_A_BB) attacks |= (b << 1);
+    if (sq >= 9 && (b >> 9) & ~FILE_H_BB) attacks |= (b >> 9);
+    if (sq >= 8 && (b >> 8)) attacks |= (b >> 8);
+    if (sq >= 7 && (b >> 7) & ~FILE_A_BB) attacks |= (b >> 7);
+    if (sq >= 1 && (b >> 1) & ~FILE_H_BB) attacks |= (b >> 1);
+    if (sq <= 54 && (b << 9) & ~FILE_A_BB) attacks |= (b << 9);
+    if (sq <= 55 && (b << 8)) attacks |= (b << 8);
+    if (sq <= 56 && (b << 7) & ~FILE_H_BB) attacks |= (b << 7);
+    if (sq <= 62 && (b << 1) & ~FILE_A_BB) attacks |= (b << 1);
     return attacks;
 }
 

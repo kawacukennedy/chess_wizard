@@ -32,7 +32,7 @@ struct StateInfo {
     uint8_t promoted_piece;
     uint8_t flags;
     uint8_t prev_castle;
-    int8_t prev_ep_file;
+    uint8_t prev_ep_sq;
     uint16_t prev_halfmove;
     uint64_t prev_zobrist;
     int32_t eval_delta;
@@ -56,10 +56,6 @@ public:
 
     // History stack for unmake_move
     std::vector<StateInfo> history;
-
-    // Zobrist history for threefold detection
-    uint64_t zobrist_history[MAX_PLY];
-    int history_ply;
 
     Position();
 

@@ -28,7 +28,7 @@ char piece_to_char(PieceType pt) {
     }
 }
 
-// Helper function to convert char to PieceType for FEN parsing
+// Helper function to convert char to PieceType from FEN
 PieceType char_to_piece_type_from_fen(char c) {
     switch (c) {
         case 'P': return WP;
@@ -53,27 +53,31 @@ Square get_king_square(const Position& pos, Color color) {
     return static_cast<Square>(lsb_index(king_bb));
 }
 
-Position::Position() {
-    // Initialize all bitboards to 0
-    for (int i = WP; i <= BK; ++i) {
-        piece_bitboards[i] = 0ULL;
-    }
-    occupancy_bitboards[WHITE] = 0ULL;
-    occupancy_bitboards[BLACK] = 0ULL;
-    occupancy_bitboards[BOTH] = 0ULL;
+Position::Position() :
+    piece_bitboards{},
+    occupancy_bitboards{},
+    side_to_move(WHITE),
+    castling_rights(NO_CASTLING),
+    en_passant_sq(NO_SQUARE),
+    halfmove_clock(0),
+    fullmove_number(1),
+    hash_key(0),
+    history()
+{
+}
 
+void Position::set_from_fen(const std::string& fen) {
+    // Reset board to initial state
+    piece_bitboards = {};
+    occupancy_bitboards[0] = 0;
+    occupancy_bitboards[1] = 0;
+    occupancy_bitboards[2] = 0;
     side_to_move = WHITE;
     castling_rights = NO_CASTLING;
     en_passant_sq = NO_SQUARE;
     halfmove_clock = 0;
     fullmove_number = 1;
-    hash_key = 0ULL;
-    history_ply = 0;
-}
-
-void Position::set_from_fen(const std::string& fen) {
-    // Reset board to initial state
-    *this = Position();
+    hash_key = 0;
 
     std::stringstream ss(fen);
     std::string board_str, side_str, castling_str, enpassant_str, halfmove_str, fullmove_str;
@@ -183,8 +187,8 @@ bool Position::is_square_attacked(Square sq, Color by_color) const {
         }
     } else { // by_color == BLACK
         if (get_rank(sq) < RANK_8) {
-            if (get_file(sq) > FILE_A && get_bit(piece_bitboards[BP], (Square)(sq + 7))) return true;
-            if (get_file(sq) < FILE_H && get_bit(piece_bitboards[BP], (Square)(sq + 9))) return true;
+            if (get_file(sq) > FILE_A && (sq + 7) < 64 && get_bit(piece_bitboards[BP], (Square)(sq + 7))) return true;
+            if (get_file(sq) < FILE_H && (sq + 9) < 64 && get_bit(piece_bitboards[BP], (Square)(sq + 9))) return true;
         }
     }
 
@@ -283,9 +287,7 @@ void Position::make_move(Move move) {
     Move::PromotionType promoted_type = move.promotion();
     uint8_t flags = move.flags();
 
-    // Save zobrist for threefold
-    if (history_ply < MAX_PLY) zobrist_history[history_ply] = hash_key;
-    history_ply++;
+
 
     // Save current state for unmake_move
     StateInfo si = {};
@@ -296,7 +298,7 @@ void Position::make_move(Move move) {
     si.promoted_piece = promoted_type == Move::NO_PROMOTION ? NO_PIECE : promotion_val_to_piece_type(promoted_type, side_to_move);
     si.flags = flags;
     si.prev_castle = castling_rights;
-    si.prev_ep_file = en_passant_sq == NO_SQUARE ? -1 : get_file(en_passant_sq);
+    si.prev_ep_sq = en_passant_sq;
     si.prev_halfmove = halfmove_clock;
     si.prev_zobrist = hash_key;
     si.eval_delta = 0; // TODO: compute incremental eval delta
@@ -453,7 +455,7 @@ void Position::make_null_move() {
     si.promoted_piece = NO_PIECE;
     si.flags = 0;
     si.prev_castle = castling_rights;
-    si.prev_ep_file = en_passant_sq == NO_SQUARE ? -1 : get_file(en_passant_sq);
+    si.prev_ep_sq = en_passant_sq;
     si.prev_halfmove = halfmove_clock;
     si.prev_zobrist = hash_key;
     si.eval_delta = 0;
@@ -477,13 +479,11 @@ void Position::unmake_null_move() {
     history.pop_back();
 
     castling_rights = (CastlingRights)si.prev_castle;
-    en_passant_sq = si.prev_ep_file == -1 ? NO_SQUARE : (Square)(si.prev_ep_file + (side_to_move == WHITE ? 16 : 48));
+    en_passant_sq = (Square)si.prev_ep_sq;
     halfmove_clock = si.prev_halfmove;
     hash_key = si.prev_zobrist;
 
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
-
-    history_ply--;
 }
 
 void Position::unmake_move(Move move) {
@@ -491,7 +491,7 @@ void Position::unmake_move(Move move) {
     history.pop_back();
 
     castling_rights = (CastlingRights)si.prev_castle;
-    en_passant_sq = si.prev_ep_file == -1 ? NO_SQUARE : (Square)(si.prev_ep_file + (side_to_move == WHITE ? 48 : 16));
+    en_passant_sq = (Square)si.prev_ep_sq;
     halfmove_clock = si.prev_halfmove;
     hash_key = si.prev_zobrist;
 
@@ -500,8 +500,6 @@ void Position::unmake_move(Move move) {
     if (side_to_move == WHITE) {
         fullmove_number--;
     }
-
-    history_ply--;
 
     Square from_sq = move.from();
     Square to_sq = move.to();
@@ -577,6 +575,3 @@ void Position::unmake_move(Move move) {
         set_bit(occupancy_bitboards[(side_to_move == WHITE ? BLACK : WHITE)], captured_pawn_sq);
         set_bit(occupancy_bitboards[BOTH], captured_pawn_sq);
     }
-
-    history_ply--;
-}

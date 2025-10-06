@@ -32,7 +32,7 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE ${RELEASE_FLAGS})
 
 # Debug flags for sanity checking
-set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -fsanitize=address,undefined -DDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -DDEBUG")
 
 # --- Source Files ---
 

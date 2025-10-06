@@ -173,5 +173,6 @@ void generate_legal_moves(const Position& pos, MoveList& legal_moves) {
         if (!temp_pos.is_square_attacked(king_sq, temp_pos.side_to_move)) {
             legal_moves.push_back(move);
         }
+        temp_pos.unmake_move(move);
     }
 }

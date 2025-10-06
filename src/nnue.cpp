@@ -181,10 +181,13 @@ inline int32_t relu(int32_t x) {
 int32_t Evaluator::evaluate(Color us) {
     if (!initialized) return 0;
 
-    int32_t output = net.output_bias;
+    int32_t score = net.output_bias;
     for (int i = 0; i < HIDDEN_SIZE; ++i) {
-        output += relu(acc.hidden[i]) * net.output_weights[i];
+        int32_t hidden = std::max(0, acc.hidden[i]);
+        score += hidden * net.output_weights[i];
     }
+    return score;
+}
 
     // Scale by 16 as per common NNUE implementations
     output /= 16;

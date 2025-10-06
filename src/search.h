@@ -37,11 +37,9 @@ extern uint64_t NodeCount;
 extern std::atomic<bool> StopSearch;
 
 // PV table
-extern Move PV_TABLE[MAX_PLY][MAX_PLY];
-extern int PV_LENGTH[MAX_PLY];
-
-// Killer moves
-extern Move KILLER_MOVES[MAX_PLY][2];
+extern Move PV_TABLE[MAX_PLY + 1][MAX_PLY + 1];
+extern int PV_LENGTH[MAX_PLY + 1];
+extern Move KILLER_MOVES[MAX_PLY + 1][2];
 
 // History heuristic
 extern int HISTORY_TABLE[12][64];

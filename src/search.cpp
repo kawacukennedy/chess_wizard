@@ -32,11 +32,11 @@ const double WIN_PROB_OFFSET = 0.0;
 const int MATE_VALUE = 1000000;
 
 // --- PV Table ---
-Move PV_TABLE[MAX_PLY][MAX_PLY];
-int PV_LENGTH[MAX_PLY];
+Move PV_TABLE[MAX_PLY + 1][MAX_PLY + 1];
+int PV_LENGTH[MAX_PLY + 1];
 
 // --- Killer Moves ---
-Move KILLER_MOVES[MAX_PLY][2];
+Move KILLER_MOVES[MAX_PLY + 1][2];
 
 // --- History Heuristic ---
 int HISTORY_TABLE[12][64];
@@ -95,15 +95,6 @@ std::tuple<int, int, int> rollout(Position pos, int max_depth) {
 
 // --- Draw Detection ---
 bool is_draw(const Position& pos) {
-    // Threefold repetition
-    int count = 0;
-    for (int i = 0; i < pos.history_ply; ++i) {
-        if (pos.zobrist_history[i] == pos.hash_key) {
-            count++;
-            if (count >= 2) return true; // 3rd occurrence
-        }
-    }
-
     // 50-move rule
     if (pos.halfmove_clock >= 100) return true;
 
@@ -163,7 +154,7 @@ void clear_search_globals() {
     NodeCount = 0;
     StopSearch = false;
 
-    for (int i = 0; i < MAX_PLY; ++i) {
+    for (int i = 0; i < MAX_PLY + 1; ++i) {
         PV_LENGTH[i] = 0;
         KILLER_MOVES[i][0] = Move(0);
         KILLER_MOVES[i][1] = Move(0);
@@ -176,6 +167,9 @@ void clear_search_globals() {
     }
 }
 
+// --- Policy Score ---
+int policy_score(Move m);
+
 // --- Move Scoring ---
 int score_move(Move move, int ply, Move tt_move, const Position& pos) {
     if (move == tt_move) return 1 << 20;
@@ -186,7 +180,18 @@ int score_move(Move move, int ply, Move tt_move, const Position& pos) {
     }
     if (move == KILLER_MOVES[ply][0]) return 8000;
     if (move == KILLER_MOVES[ply][1]) return 7000;
-    return HISTORY_TABLE[move.moving_piece()][move.to()];
+    return HISTORY_TABLE[move.moving_piece()][move.to()] + policy_score(move);
+}
+
+// --- Policy Score ---
+int policy_score(Move m) {
+    if (m.is_capture()) return 0;
+    if (m.is_promotion()) return 50;
+    Square to = m.to();
+    int file = get_file(to);
+    int rank = get_rank(to);
+    int center = 4 - std::abs(file - 3) - std::abs(rank - 3);
+    return center;
 }
 
 // --- Move Ordering ---
@@ -527,54 +532,7 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
 
     SearchResult result = {};
 
-    // Monte Carlo tie-break
-    double stddev = 0.0;
-    if (win_probs.size() > 1) {
-        double mean = 0.0;
-        for (double v : win_probs) mean += v;
-        mean /= win_probs.size();
-        for (double v : win_probs) stddev += (v - mean) * (v - mean);
-        stddev = sqrt(stddev / (win_probs.size() - 1));
-    }
-    if (stddev > 0.05) {
-        std::vector<Move> top_moves;
-        int best_score = -MATE_VALUE;
-        for (auto& p : last_moves_scores) {
-            if (p.second > best_score) best_score = p.second;
-        }
-        for (auto& p : last_moves_scores) {
-            if (p.second >= best_score - 20) top_moves.push_back(p.first);
-        }
-        if (top_moves.size() > 1) {
-            std::vector<double> winrates;
-            for (auto m : top_moves) {
-                Position p = pos;
-                p.make_move(m);
-                int wins = 0, total = 0;
-                for (int i = 0; i < 128; ++i) {
-                    auto [w, l, d] = rollout(p, 40);
-                    wins += w;
-                    total += w + l + d;
-                }
-                winrates.push_back((double)wins / total);
-            }
-            int best_idx = 0;
-            double best_rate = winrates[0];
-            for (int i = 1; i < winrates.size(); ++i) {
-                if (winrates[i] > best_rate) {
-                    best_rate = winrates[i];
-                    best_idx = i;
-                }
-            }
-            if (best_rate - winrates[0] >= 0.05) {
-                // Override best move
-                Move override_move = top_moves[best_idx];
-                PV_TABLE[0][0] = override_move;
-                PV_LENGTH[0] = 1;
-                result.info_flags |= MC_TIEBREAK;
-            }
-        }
-    }
+    // Monte Carlo tie-break disabled for now
     if (PV_LENGTH[0] > 0) {
         strncpy(result.best_move_uci, PV_TABLE[0][0].to_uci_string().c_str(), 7);
         result.best_move_uci[7] = '\0';
