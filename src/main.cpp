@@ -16,27 +16,13 @@
 #include "book.h"
 #include "nnue.h"
 
-// --- Global Options ---
-ChessWizardOptions OPTIONS = {
-    .use_nnue = false,
-    .nnue_path = "",
-    .use_tb = false,
-    .tb_paths = nullptr,
-    .book_path = "",
-    .tt_size_mb = 32,
-    .multi_pv = 1,
-    .resign_threshold = 0.01
-};
+extern ChessWizardOptions OPTIONS;
+extern Book OPENING_BOOK;
+extern std::string NNUE_PATH_BUFFER;
+extern std::string BOOK_PATH_BUFFER;
+extern void init_all();
 
-Book OPENING_BOOK;
-std::string NNUE_PATH_BUFFER;
-std::string BOOK_PATH_BUFFER;
 
-void init_all() {
-    init_attacks();
-    init_zobrist_keys();
-    TT.resize(OPTIONS.tt_size_mb);
-}
 
 void run_tests() {
     std::cout << "Running unit tests..." << std::endl;
@@ -108,17 +94,7 @@ void run_integration_tests() {
     std::cout << "Integration tests completed." << std::endl;
 }
 
-// --- C-API Implementation ---
-extern "C" SearchResult chess_wizard_suggest_move(const char* fen_or_moves, int max_time_ms, int max_depth, const ChessWizardOptions* opts) {
-    Position pos;
-    pos.set_from_fen(std::string(fen_or_moves));
 
-    SearchLimits limits;
-    limits.movetime = max_time_ms;
-    limits.max_depth = max_depth;
-
-    return search_position(pos, limits, opts);
-}
 
 // --- UCI Loop ---
 void uci_loop() {
@@ -204,7 +180,7 @@ void uci_loop() {
         } else if (token == "perft") {
             int depth;
             iss >> depth;
-            uint64_t nodes = perft(depth, pos);
+            uint64_t nodes = perft_debug(depth, pos, depth);
             std::cout << "Perft " << depth << ": " << nodes << std::endl;
         } else if (token == "quit") {
             break;
@@ -215,23 +191,44 @@ void uci_loop() {
 void cli_loop() {
     Position pos;
     pos.set_from_fen(START_FEN);
+    TT.resize(32);
 
-    std::cout << "Did you start the game? (y/n): ";
+    std::cout << "Do you want the engine to make the first move? (y/n): ";
     std::string response;
     std::getline(std::cin, response);
-    bool user_started = (response == "y" || response == "Y");
+    bool engine_first = (response == "y" || response == "Y");
 
-    if (!user_started) {
-        // Opponent started, ask for opponent's first move
-        std::cout << "Enter opponent's first move (UCI): ";
-        std::string opp_move_str;
-        std::getline(std::cin, opp_move_str);
-        Move opp_move = get_move_from_uci(opp_move_str, pos);
-        if (opp_move.value != 0) {
-            pos.make_move(opp_move);
-            std::cout << "Applied opponent's move: " << opp_move_str << std::endl;
+    if (engine_first) {
+        // Engine makes first move
+        SearchLimits limits;
+        limits.movetime = 5000;
+        limits.max_depth = 64;
 
-            // Engine's first move
+        SearchResult result = search_position(pos, limits, &OPTIONS);
+
+        std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
+        for (size_t i = 0; i < result.pv_uci.size(); ++i) {
+            std::cout << "\"" << result.pv_uci[i] << "\"";
+            if (i < result.pv_uci.size() - 1) std::cout << ",";
+        }
+        std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+
+        std::cout << "Best: " << result.best_move_uci << "  PV: ";
+        for (const auto& m : result.pv_uci) std::cout << m << " ";
+        std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+
+        pos.make_move(get_move_from_uci(result.best_move_uci, pos));
+    } else {
+        // User makes first move
+        std::cout << "Enter your first move (UCI): ";
+        std::string user_move_str;
+        std::getline(std::cin, user_move_str);
+        Move user_move = get_move_from_uci(user_move_str, pos);
+        if (user_move.value != 0) {
+            pos.make_move(user_move);
+            std::cout << "Applied your move: " << user_move_str << std::endl;
+
+            // Engine's response
             SearchLimits limits;
             limits.movetime = 5000;
             limits.max_depth = 64;
@@ -254,26 +251,6 @@ void cli_loop() {
             std::cout << "Invalid move. Exiting." << std::endl;
             return;
         }
-    } else {
-        // User started, engine plays black, suggest first move
-        SearchLimits limits;
-        limits.movetime = 5000;
-        limits.max_depth = 64;
-
-        SearchResult result = search_position(pos, limits, &OPTIONS);
-
-        std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
-        for (size_t i = 0; i < result.pv_uci.size(); ++i) {
-            std::cout << "\"" << result.pv_uci[i] << "\"";
-            if (i < result.pv_uci.size() - 1) std::cout << ",";
-        }
-        std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
-
-        std::cout << "Best: " << result.best_move_uci << "  PV: ";
-        for (const auto& m : result.pv_uci) std::cout << m << " ";
-        std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
-
-        pos.make_move(get_move_from_uci(result.best_move_uci, pos));
     }
 
     std::cout << "Chess Wizard ready. Enter move or 'quit'." << std::endl;

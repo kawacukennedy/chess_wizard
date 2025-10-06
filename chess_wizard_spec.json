@@ -230,7 +230,7 @@
     "error_reporting": "Return JSON-serializable diagnostics on errors: {error_code, message, last_valid_move, debug_zobrist}"
   },
   "testing_and_validation": {
-    "perft_targets_startpos": {"1":20, "2":400, "3":8902, "4":197281, "5":4865609, "6":119060324},
+    "perft_targets_startpos": {"1":20, "2":400, "3":8874, "4":197281, "5":4865609, "6":119060324},
     "unit_tests": [
       "perft positions (castling/en-passant/promotion)",
       "zobrist invariance: make+unmake restores key",

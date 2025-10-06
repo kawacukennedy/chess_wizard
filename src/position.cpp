@@ -194,13 +194,22 @@ bool Position::is_square_attacked(Square sq, Color by_color) const {
     // Check for king attacks
     if (KING_ATTACKS[sq] & (by_color == WHITE ? piece_bitboards[WK] : piece_bitboards[BK])) return true;
 
+    // Blockers exclude the piece on sq
+    Bitboard occ = occupancy_bitboards[BOTH] & ~(1ULL << sq);
+
     // Check for bishop/queen attacks
-    uint64_t bishop_queen_attackers = (by_color == WHITE ? (piece_bitboards[WB] | piece_bitboards[WQ]) : (piece_bitboards[BB] | piece_bitboards[BQ]));
-    if (get_bishop_attacks(sq, occupancy_bitboards[BOTH]) & bishop_queen_attackers) return true;
+    Bitboard bishop_queen_attackers = (by_color == WHITE ? (piece_bitboards[WB] | piece_bitboards[WQ]) : (piece_bitboards[BB] | piece_bitboards[BQ]));
+    while (bishop_queen_attackers) {
+        Square attacker_sq = pop_bit(bishop_queen_attackers);
+        if (get_bishop_attacks(attacker_sq, occ) & (1ULL << sq)) return true;
+    }
 
     // Check for rook/queen attacks
-    uint64_t rook_queen_attackers = (by_color == WHITE ? (piece_bitboards[WR] | piece_bitboards[WQ]) : (piece_bitboards[BR] | piece_bitboards[BQ]));
-    if (get_rook_attacks(sq, occupancy_bitboards[BOTH]) & rook_queen_attackers) return true;
+    Bitboard rook_queen_attackers = (by_color == WHITE ? (piece_bitboards[WR] | piece_bitboards[WQ]) : (piece_bitboards[BR] | piece_bitboards[BQ]));
+    while (rook_queen_attackers) {
+        Square attacker_sq = pop_bit(rook_queen_attackers);
+        if (get_rook_attacks(attacker_sq, occ) & (1ULL << sq)) return true;
+    }
 
     return false;
 }
@@ -267,7 +276,8 @@ std::string Position::to_fen_string() const {
 
 void Position::make_move(Move move) {
     // Save zobrist for threefold
-    zobrist_history[history_ply++] = hash_key;
+    if (history_ply < MAX_PLY) zobrist_history[history_ply] = hash_key;
+    history_ply++;
 
     // Save current state for unmake_move
     history.push_back({

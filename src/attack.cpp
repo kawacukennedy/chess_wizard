@@ -15,11 +15,11 @@ Bitboard mask_pawn_attacks(Color side, Square sq) {
     Bitboard attacks = 0;
     Bitboard b = 1ULL << sq;
     if (side == WHITE) {
-        if ((b >> 7) & ~FILE_A_BB) attacks |= (b >> 7);
-        if ((b >> 9) & ~FILE_H_BB) attacks |= (b >> 9);
-    } else {
         if ((b << 7) & ~FILE_H_BB) attacks |= (b << 7);
         if ((b << 9) & ~FILE_A_BB) attacks |= (b << 9);
+    } else {
+        if ((b >> 9) & ~FILE_A_BB) attacks |= (b >> 9);
+        if ((b >> 7) & ~FILE_H_BB) attacks |= (b >> 7);
     }
     return attacks;
 }
@@ -62,23 +62,27 @@ Bitboard get_bishop_attacks(Square sq, Bitboard blockers) {
 
     // Northeast
     for (r = tr + 1, f = tf + 1; r <= 7 && f <= 7; ++r, ++f) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (get_bit(blockers, (Square)(r * 8 + f))) break;
+        Square s = (Square)(r * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // Northwest
     for (r = tr + 1, f = tf - 1; r <= 7 && f >= 0; ++r, --f) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (get_bit(blockers, (Square)(r * 8 + f))) break;
+        Square s = (Square)(r * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // Southeast
     for (r = tr - 1, f = tf + 1; r >= 0 && f <= 7; --r, ++f) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (get_bit(blockers, (Square)(r * 8 + f))) break;
+        Square s = (Square)(r * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // Southwest
     for (r = tr - 1, f = tf - 1; r >= 0 && f >= 0; --r, --f) {
-        attacks |= (1ULL << (r * 8 + f));
-        if (get_bit(blockers, (Square)(r * 8 + f))) break;
+        Square s = (Square)(r * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     return attacks;
 }
@@ -91,23 +95,27 @@ Bitboard get_rook_attacks(Square sq, Bitboard blockers) {
 
     // North
     for (r = tr + 1; r <= 7; ++r) {
-        attacks |= (1ULL << (r * 8 + tf));
-        if (get_bit(blockers, (Square)(r * 8 + tf))) break;
+        Square s = (Square)(r * 8 + tf);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // South
     for (r = tr - 1; r >= 0; --r) {
-        attacks |= (1ULL << (r * 8 + tf));
-        if (get_bit(blockers, (Square)(r * 8 + tf))) break;
+        Square s = (Square)(r * 8 + tf);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // East
     for (f = tf + 1; f <= 7; ++f) {
-        attacks |= (1ULL << (tr * 8 + f));
-        if (get_bit(blockers, (Square)(tr * 8 + f))) break;
+        Square s = (Square)(tr * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     // West
     for (f = tf - 1; f >= 0; --f) {
-        attacks |= (1ULL << (tr * 8 + f));
-        if (get_bit(blockers, (Square)(tr * 8 + f))) break;
+        Square s = (Square)(tr * 8 + f);
+        if (get_bit(blockers, s)) break;
+        attacks |= (1ULL << s);
     }
     return attacks;
 }

@@ -2,6 +2,7 @@
 #include "position.h"
 #include "attack.h"
 #include "move.h"
+#include <iostream>
 
 void generate_pawn_moves(const Position& pos, MoveList& moves, bool captures_only) {
     Color us = pos.side_to_move;

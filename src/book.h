@@ -8,6 +8,7 @@ class Book {
 public:
     bool load(const std::string& path);
     Move get_move(uint64_t hash);
+    bool is_loaded() const { return !entries.empty(); }
 
 private:
     struct BookEntry {
