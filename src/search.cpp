@@ -429,6 +429,26 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
         NNUE::nnue_evaluator.reset(pos);
     }
 
+    // Syzygy tablebase
+    if (opts && opts->use_syzygy) {
+        TBResult tb_result;
+        if (probe_syzygy(pos, tb_result)) {
+            SearchResult result = {};
+            std::string uci = tb_result.best_move.to_uci_string();
+            strncpy(result.best_move_uci, uci.c_str(), 7);
+            std::string json = "[\"" + uci + "\"]";
+            result.pv_json = (char*)malloc(json.size() + 1);
+            strcpy(result.pv_json, json.c_str());
+            result.score_cp = tb_result.score;
+            result.win_prob = sigmoid_win_prob(tb_result.score);
+            result.depth = 0;
+            result.nodes = 0;
+            result.time_ms = 0;
+            result.info_flags = TB;
+            return result;
+        }
+    }
+
     // Opening book
     if (opts && opts->book_path && strlen(opts->book_path) > 0) {
         if (!OPENING_BOOK.is_loaded()) {
@@ -439,13 +459,15 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
             SearchResult result = {};
             std::string uci = book_move.to_uci_string();
             strncpy(result.best_move_uci, uci.c_str(), 7);
-            result.pv_uci.push_back(uci);
+            std::string json = "[\"" + uci + "\"]";
+            result.pv_json = (char*)malloc(json.size() + 1);
+            strcpy(result.pv_json, json.c_str());
             result.score_cp = 0;
             result.win_prob = 0.5;
             result.depth = 0;
             result.nodes = 0;
             result.time_ms = 0;
-            result.info_flags = BOOK_MOVE;
+            result.info_flags = BOOK;
             return result;
         }
     }
@@ -503,6 +525,8 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
         std::cout << std::endl;
     }
 
+    SearchResult result = {};
+
     // Monte Carlo tie-break
     double stddev = 0.0;
     if (win_probs.size() > 1) {
@@ -547,18 +571,25 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
                 Move override_move = top_moves[best_idx];
                 PV_TABLE[0][0] = override_move;
                 PV_LENGTH[0] = 1;
+                result.info_flags |= MC_TIEBREAK;
             }
         }
     }
-
-    SearchResult result = {};
     if (PV_LENGTH[0] > 0) {
         strncpy(result.best_move_uci, PV_TABLE[0][0].to_uci_string().c_str(), 7);
         result.best_move_uci[7] = '\0';
 
+        std::string json = "[";
         for (int i = 0; i < PV_LENGTH[0]; ++i) {
-            result.pv_uci.push_back(PV_TABLE[0][i].to_uci_string());
+            json += "\"" + PV_TABLE[0][i].to_uci_string() + "\"";
+            if (i < PV_LENGTH[0] - 1) json += ",";
         }
+        json += "]";
+        result.pv_json = (char*)malloc(json.size() + 1);
+        strcpy(result.pv_json, json.c_str());
+    } else {
+        result.pv_json = (char*)malloc(3);
+        strcpy(result.pv_json, "[]");
     }
 
     result.score_cp = score;
@@ -597,8 +628,10 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
                 // Simple: take first legal move
                 Move fallback = legal_moves[0];
                 strncpy(result.best_move_uci, fallback.to_uci_string().c_str(), 7);
-                result.pv_uci.clear();
-                result.pv_uci.push_back(fallback.to_uci_string());
+                free(result.pv_json);
+                std::string json = "[\"" + fallback.to_uci_string() + "\"]";
+                result.pv_json = (char*)malloc(json.size() + 1);
+                strcpy(result.pv_json, json.c_str());
             }
         }
     }
@@ -606,8 +639,8 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     result.info_flags = 0;
 
     // Resignation logic
-    if (result.depth >= 12 && result.nodes >= 200000 && result.win_prob <= opts->resign_threshold && !(result.info_flags & TB_OVERRIDE)) {
-        result.info_flags |= RESIGN_RECOMMENDED;
+    if (result.depth >= 12 && result.nodes >= 200000 && result.win_prob <= opts->resign_threshold && !(result.info_flags & TB)) {
+        result.info_flags |= RESIGN;
         // Optionally, set best_move_uci to empty to indicate resignation
         result.best_move_uci[0] = '\0';
     }

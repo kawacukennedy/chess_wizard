@@ -6,12 +6,28 @@
 #include "position.h"
 #include "movegen.h"
 #include "engine.h"
-#include "attack.h"
-#include "zobrist.h"
+#include "search.h"
+#include "position.h"
+#include "movegen.h"
+#include "evaluate.h"
 #include "tt.h"
-#include "types.h"
 #include "move.h"
+#include "nnue.h"
+#include "types.h"
+#include "attack.h"
+#include "book.h"
+#include "syzygy.h"
+#include "zobrist.h"
+#include <iostream>
+#include <algorithm>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <cstring>
 #include <chrono>
+#include <unordered_map>
+#include <list>
 
 #include "book.h"
 #include "nnue.h"
@@ -21,6 +37,80 @@ extern Book OPENING_BOOK;
 extern std::string NNUE_PATH_BUFFER;
 extern std::string BOOK_PATH_BUFFER;
 extern void init_all();
+
+// LRU Cache for session results
+const size_t CACHE_SIZE = 4096;
+std::unordered_map<std::string, std::list<std::pair<std::string, SearchResult>>::iterator> cache_map;
+std::list<std::pair<std::string, SearchResult>> cache_list;
+
+SearchResult* get_cached_result(const std::string& fen) {
+    auto it = cache_map.find(fen);
+    if (it == cache_map.end()) return nullptr;
+    // Move to front
+    cache_list.splice(cache_list.begin(), cache_list, it->second);
+    return &it->second->second;
+}
+
+void put_cached_result(const std::string& fen, const SearchResult& result) {
+    auto it = cache_map.find(fen);
+    if (it != cache_map.end()) {
+        // Update
+        it->second->second = result;
+        cache_list.splice(cache_list.begin(), cache_list, it->second);
+    } else {
+        // Insert
+        if (cache_list.size() >= CACHE_SIZE) {
+            auto last = cache_list.back();
+            cache_map.erase(last.first);
+            cache_list.pop_back();
+        }
+        cache_list.emplace_front(fen, result);
+        cache_map[fen] = cache_list.begin();
+    }
+}
+
+void clear_cache() {
+    cache_map.clear();
+    cache_list.clear();
+}
+
+void print_result(const SearchResult& result) {
+    // JSON
+    std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":" << result.pv_json
+              << ",\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob
+              << ",\"depth\":" << (int)result.depth << ",\"nodes\":" << result.nodes
+              << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+
+    // Human summary
+    std::string source = "ENGINE";
+    if (result.info_flags & BOOK) source = "BOOK";
+    else if (result.info_flags & TB) source = "TB";
+    else if (result.info_flags & MC_TIEBREAK) source = "MC";
+
+    std::cout << "Recommended: " << result.best_move_uci << "  Score: " << result.score_cp
+              << "  WinProb: " << (result.win_prob * 100) << "%  Depth: " << (int)result.depth
+              << "  Nodes: " << result.nodes << "  Time: " << result.time_ms << "ms  Source: " << source << std::endl;
+}
+
+void run_perft_tests() {
+    std::cout << "Running perft tests..." << std::endl;
+    Position pos;
+    pos.set_from_fen(START_FEN);
+
+    // Perft targets from spec
+    std::vector<uint64_t> targets = {20, 400, 8902, 197281, 4865609, 119060324};
+    for (int depth = 1; depth <= 6; ++depth) {
+        uint64_t nodes = perft(depth, pos);
+        std::cout << "Perft " << depth << ": " << nodes << " (expected " << targets[depth-1] << ")";
+        if (nodes == targets[depth-1]) {
+            std::cout << " PASS" << std::endl;
+        } else {
+            std::cout << " FAIL" << std::endl;
+        }
+    }
+
+    std::cout << "Perft tests completed." << std::endl;
+}
 
 
 
@@ -193,34 +283,25 @@ void cli_loop() {
     pos.set_from_fen(START_FEN);
     TT.resize(32);
 
-    std::cout << "Do you want the engine to make the first move? (y/n): ";
+    std::cout << "Chess Wizard ready. Who started the match? Type \"me\" if you started (White) or \"opponent\" if they started (Black)." << std::endl;
     std::string response;
     std::getline(std::cin, response);
-    bool engine_first = (response == "y" || response == "Y");
+    bool me_started = (response == "me" || response == "white" || response == "ME" || response == "WHITE");
 
-    if (engine_first) {
-        // Engine makes first move
+    if (!me_started) {
+        // Opponent started, engine makes first move
         SearchLimits limits;
         limits.movetime = 5000;
         limits.max_depth = 64;
 
         SearchResult result = search_position(pos, limits, &OPTIONS);
 
-        std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
-        for (size_t i = 0; i < result.pv_uci.size(); ++i) {
-            std::cout << "\"" << result.pv_uci[i] << "\"";
-            if (i < result.pv_uci.size() - 1) std::cout << ",";
-        }
-        std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
-
-        std::cout << "Best: " << result.best_move_uci << "  PV: ";
-        for (const auto& m : result.pv_uci) std::cout << m << " ";
-        std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+        print_result(result);
 
         pos.make_move(get_move_from_uci(result.best_move_uci, pos));
     } else {
-        // User makes first move
-        std::cout << "Enter your first move (UCI): ";
+        // Me started, user makes first move
+        std::cout << "Enter your first move (UCI or SAN): ";
         std::string user_move_str;
         std::getline(std::cin, user_move_str);
         Move user_move = get_move_from_uci(user_move_str, pos);
@@ -235,16 +316,7 @@ void cli_loop() {
 
             SearchResult result = search_position(pos, limits, &OPTIONS);
 
-            std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
-            for (size_t i = 0; i < result.pv_uci.size(); ++i) {
-                std::cout << "\"" << result.pv_uci[i] << "\"";
-                if (i < result.pv_uci.size() - 1) std::cout << ",";
-            }
-            std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
-
-            std::cout << "Best: " << result.best_move_uci << "  PV: ";
-            for (const auto& m : result.pv_uci) std::cout << m << " ";
-            std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
+            print_result(result);
 
             pos.make_move(get_move_from_uci(result.best_move_uci, pos));
         } else {
@@ -253,11 +325,30 @@ void cli_loop() {
         }
     }
 
-    std::cout << "Chess Wizard ready. Enter move or 'quit'." << std::endl;
+    std::cout << "Enter opponent move (UCI or SAN), or type newgame/undo/quit." << std::endl;
 
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "quit") break;
+        if (line == "newgame") {
+            pos.set_from_fen(START_FEN);
+            std::cout << "New game started." << std::endl;
+            continue;
+        }
+        if (line == "undo") {
+            if (pos.history_ply >= 2) {
+                StateInfo si1 = pos.history[pos.history.size() - 1];
+                StateInfo si2 = pos.history[pos.history.size() - 2];
+                Move m1 = si1.from == NO_SQUARE ? Move(0) : create_move((Square)si1.from, (Square)si1.to, (PieceType)si1.moving_piece, (PieceType)si1.captured_piece, si1.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si1.promoted_piece), si1.flags);
+                Move m2 = si2.from == NO_SQUARE ? Move(0) : create_move((Square)si2.from, (Square)si2.to, (PieceType)si2.moving_piece, (PieceType)si2.captured_piece, si2.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si2.promoted_piece), si2.flags);
+                pos.unmake_move(m1);
+                pos.unmake_move(m2);
+                std::cout << "Undid last two moves." << std::endl;
+            } else {
+                std::cout << "Cannot undo." << std::endl;
+            }
+            continue;
+        }
 
         // Try to parse as move
         Move move = get_move_from_uci(line, pos);
@@ -272,20 +363,8 @@ void cli_loop() {
 
             SearchResult result = search_position(pos, limits, &OPTIONS);
 
-            // Print JSON
-            std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":[";
-            for (size_t i = 0; i < result.pv_uci.size(); ++i) {
-                std::cout << "\"" << result.pv_uci[i] << "\"";
-                if (i < result.pv_uci.size() - 1) std::cout << ",";
-            }
-            std::cout << "],\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob << ",\"depth\":" << result.depth << ",\"nodes\":" << result.nodes << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
+            print_result(result);
 
-            // Human-friendly line
-            std::cout << "Best: " << result.best_move_uci << "  PV: ";
-            for (const auto& m : result.pv_uci) std::cout << m << " ";
-            std::cout << "  Score: " << result.score_cp << "  WinProb: " << result.win_prob << std::endl;
-
-            // Apply engine's move for next input
             pos.make_move(get_move_from_uci(result.best_move_uci, pos));
 
         } else {
@@ -302,6 +381,7 @@ int main(int argc, char* argv[]) {
     bool is_cli = false;
     bool is_bench = false;
     bool is_test = false;
+    bool is_perft = false;
     bool is_integration_test = false;
     int bench_tt_size = 32;
     int bench_time_ms = 10000;
@@ -313,6 +393,8 @@ int main(int argc, char* argv[]) {
             is_cli = true;
         } else if (arg == "--test") {
             is_test = true;
+        } else if (arg == "--perft") {
+            is_perft = true;
         } else if (arg == "--integration-test") {
             is_integration_test = true;
         } else if (arg == "--bench") {
@@ -340,6 +422,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    if (is_perft) {
+        run_perft_tests();
+        return 0;
+    }
+
     if (is_integration_test) {
         run_integration_tests();
         return 0;
@@ -364,7 +451,7 @@ int main(int argc, char* argv[]) {
 
             SearchResult result = search_position(pos, limits, &OPTIONS);
             total_nodes += result.nodes;
-            max_depth = std::max(max_depth, result.depth);
+            max_depth = std::max(max_depth, (int)result.depth);
 
             if (result.nodes == 0) break;
         }

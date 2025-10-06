@@ -24,11 +24,21 @@ enum CastlingRights : uint8_t {
     ALL_CASTLING = WHITE_KINGSIDE | WHITE_QUEENSIDE | BLACK_KINGSIDE | BLACK_QUEENSIDE
 };
 
-struct State {
-    CastlingRights castling_rights;
-    Square en_passant_sq;
-    int halfmove_clock;
-    uint64_t hash_key;
+struct StateInfo {
+    uint8_t from;
+    uint8_t to;
+    uint8_t moving_piece;
+    uint8_t captured_piece;
+    uint8_t promoted_piece;
+    uint8_t flags;
+    uint8_t prev_castle;
+    int8_t prev_ep_file;
+    uint16_t prev_halfmove;
+    uint64_t prev_zobrist;
+    int32_t eval_delta;
+    uint8_t nnue_delta_count;
+    // Padding to <=32 bytes
+    uint8_t padding[1];
 };
 
 class Position {
@@ -45,7 +55,7 @@ public:
     uint64_t hash_key;
 
     // History stack for unmake_move
-    std::vector<State> history;
+    std::vector<StateInfo> history;
 
     // Zobrist history for threefold detection
     uint64_t zobrist_history[MAX_PLY];

@@ -10,13 +10,9 @@ Evaluator nnue_evaluator;
 bool nnue_available = false;
 
 // --- Feature Transformer ---
-// Maps piece and square to a feature index as per Stockfish convention
-// King presence is used to determine which 384-feature half to use.
+// Simple halfkp: 12 pieces * 64 squares = 768 features
 int Evaluator::get_feature_index(PieceType pt, Square sq) {
-    const int piece_offsets[] = {0, 0, 64, 128, 192, 256, 320}; // None, P, N, B, R, Q, K
-    const int color_offset = (get_piece_color(pt) == BLACK) ? 384 : 0;
-    GenericPieceType gpt = (pt == NO_PIECE) ? NO_GENERIC_PIECE : static_cast<GenericPieceType>(pt % 6);
-    return color_offset + piece_offsets[gpt + 1] + sq;
+    return static_cast<int>(pt) * 64 + sq;
 }
 
 // --- Evaluator Class Implementation ---
@@ -58,15 +54,21 @@ bool Evaluator::init(const char* path) {
     int32_t quant_params;
     file.read(reinterpret_cast<char*>(&quant_params), sizeof(int32_t));
 
-    // Read weights
-    net.feature_weights.resize(INPUT_SIZE * HIDDEN_SIZE);
-    net.feature_bias.resize(HIDDEN_SIZE);
-    net.output_weights.resize(HIDDEN_SIZE);
+    // Read weights as int16_t, convert to int32_t
+    std::vector<int16_t> temp_feature_weights(INPUT_SIZE * HIDDEN_SIZE);
+    std::vector<int16_t> temp_feature_bias(HIDDEN_SIZE);
+    std::vector<int16_t> temp_output_weights(HIDDEN_SIZE);
+    int16_t temp_output_bias;
 
-    file.read(reinterpret_cast<char*>(net.feature_weights.data()), INPUT_SIZE * HIDDEN_SIZE * sizeof(int16_t));
-    file.read(reinterpret_cast<char*>(net.feature_bias.data()), HIDDEN_SIZE * sizeof(int16_t));
-    file.read(reinterpret_cast<char*>(net.output_weights.data()), HIDDEN_SIZE * sizeof(int16_t));
-    file.read(reinterpret_cast<char*>(&net.output_bias), sizeof(int16_t));
+    file.read(reinterpret_cast<char*>(temp_feature_weights.data()), INPUT_SIZE * HIDDEN_SIZE * sizeof(int16_t));
+    file.read(reinterpret_cast<char*>(temp_feature_bias.data()), HIDDEN_SIZE * sizeof(int16_t));
+    file.read(reinterpret_cast<char*>(temp_output_weights.data()), HIDDEN_SIZE * sizeof(int16_t));
+    file.read(reinterpret_cast<char*>(&temp_output_bias), sizeof(int16_t));
+
+    net.feature_weights.assign(temp_feature_weights.begin(), temp_feature_weights.end());
+    net.feature_bias.assign(temp_feature_bias.begin(), temp_feature_bias.end());
+    net.output_weights.assign(temp_output_weights.begin(), temp_output_weights.end());
+    net.output_bias = temp_output_bias;
 
     // Skip checksum for now
     uint32_t checksum;
@@ -114,21 +116,17 @@ void Evaluator::update_feature(int feature_index, bool add) {
 void Evaluator::update_make(const Position& pos, Move move) {
     if (!initialized) return;
 
+    acc.deltas.clear();
+    std::vector<int> toggled;
+
     PieceType moved_piece = move.moving_piece();
     PieceType captured_piece = move.captured_piece();
     Square from = move.from();
     Square to = move.to();
 
+    // Collect toggled features
     // Remove moved piece from original square
-    update_feature(get_feature_index(moved_piece, from), false);
-
-    // Add moved piece to new square
-    if (move.is_promotion()) {
-        PieceType promoted_piece = promotion_val_to_piece_type(move.promotion(), get_piece_color(moved_piece));
-        update_feature(get_feature_index(promoted_piece, to), true);
-    } else {
-        update_feature(get_feature_index(moved_piece, to), true);
-    }
+    toggled.push_back(get_feature_index(moved_piece, from));
 
     // Remove captured piece
     if (captured_piece != NO_PIECE) {
@@ -136,38 +134,33 @@ void Evaluator::update_make(const Position& pos, Move move) {
         if (move.is_en_passant()) {
             captured_sq = (get_piece_color(moved_piece) == WHITE) ? static_cast<Square>(to - 8) : static_cast<Square>(to + 8);
         }
-        update_feature(get_feature_index(captured_piece, captured_sq), false);
+        toggled.push_back(get_feature_index(captured_piece, captured_sq));
     }
+
+    // Add moved piece to new square
+    if (move.is_promotion()) {
+        PieceType promoted_piece = promotion_val_to_piece_type(move.promotion(), get_piece_color(moved_piece));
+        toggled.push_back(get_feature_index(promoted_piece, to));
+    } else {
+        toggled.push_back(get_feature_index(moved_piece, to));
+    }
+
+    // Update accumulator
+    for (int f : toggled) {
+        update_feature(f, true);
+    }
+
+    acc.deltas = toggled;
 }
 
 void Evaluator::update_unmake(const Position& pos, Move move) {
-    // This is just the reverse of update_make
     if (!initialized) return;
 
-    PieceType moved_piece = move.moving_piece();
-    PieceType captured_piece = move.captured_piece();
-    Square from = move.from();
-    Square to = move.to();
-
-    // Add moved piece back to original square
-    update_feature(get_feature_index(moved_piece, from), true);
-
-    // Remove moved piece from new square
-    if (move.is_promotion()) {
-        PieceType promoted_piece = promotion_val_to_piece_type(move.promotion(), get_piece_color(moved_piece));
-        update_feature(get_feature_index(promoted_piece, to), false);
-    } else {
-        update_feature(get_feature_index(moved_piece, to), false);
+    // Undo the updates
+    for (int f : acc.deltas) {
+        update_feature(f, false);
     }
-
-    // Add captured piece back
-    if (captured_piece != NO_PIECE) {
-        Square captured_sq = to;
-        if (move.is_en_passant()) {
-            captured_sq = (get_piece_color(moved_piece) == WHITE) ? static_cast<Square>(to - 8) : static_cast<Square>(to + 8);
-        }
-        update_feature(get_feature_index(captured_piece, captured_sq), true);
-    }
+    acc.deltas.clear();
 }
 
 void Evaluator::update_make_null() {
@@ -181,21 +174,20 @@ void Evaluator::update_unmake_null() {
 }
 
 // ReLU activation function
-inline int16_t relu(int16_t x) {
-    return std::max((int16_t)0, x);
+inline int32_t relu(int32_t x) {
+    return std::max(0, x);
 }
 
 int32_t Evaluator::evaluate(Color us) {
     if (!initialized) return 0;
 
-    int32_t output = 0;
+    int32_t output = net.output_bias;
     for (int i = 0; i < HIDDEN_SIZE; ++i) {
         output += relu(acc.hidden[i]) * net.output_weights[i];
     }
 
-    // The final score needs to be scaled and centered.
-    // This is a simplified version. A real implementation would use constants from the model.
-    output = (output / 16) + net.output_bias;
+    // Scale by 16 as per common NNUE implementations
+    output /= 16;
 
     return (us == WHITE) ? output : -output;
 }

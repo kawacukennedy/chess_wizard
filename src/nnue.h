@@ -13,17 +13,18 @@ const int HIDDEN_SIZE = 256;
 // NNUE Network Weights and Biases
 struct Network {
     // Input to hidden layer
-    std::vector<int16_t> feature_weights; // size = INPUT_SIZE * HIDDEN_SIZE
-    std::vector<int16_t> feature_bias;    // size = HIDDEN_SIZE
+    std::vector<int32_t> feature_weights; // size = INPUT_SIZE * HIDDEN_SIZE
+    std::vector<int32_t> feature_bias;    // size = HIDDEN_SIZE
 
     // Hidden to output layer
-    std::vector<int16_t> output_weights;  // size = HIDDEN_SIZE
-    int16_t output_bias;
+    std::vector<int32_t> output_weights;  // size = HIDDEN_SIZE
+    int32_t output_bias;
 };
 
 // Accumulator for incremental updates
 struct Accumulator {
-    std::vector<int16_t> hidden; // size = HIDDEN_SIZE
+    std::vector<int32_t> hidden; // size = HIDDEN_SIZE
+    std::vector<int> deltas; // for nnue_delta_indices
 };
 
 // Main NNUE evaluation class

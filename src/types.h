@@ -88,23 +88,25 @@ using MoveList = std::vector<Move>;
 const int MAX_PLY = 128;
 
 // Search result info flags enum
-enum InfoFlags : uint8_t {
+enum InfoFlags : uint32_t {
     NO_INFO_FLAG = 0,
-    TB_OVERRIDE = 1 << 0,
-    BOOK_MOVE = 1 << 1,
-    RESIGN_RECOMMENDED = 1 << 2
+    BOOK = 1 << 0,
+    TB = 1 << 1,
+    MC_TIEBREAK = 1 << 2,
+    RESIGN = 1 << 3,
+    ERROR = 1 << 4
 };
 
 struct SearchResult {
     char best_move_uci[8];
-    std::vector<std::string> pv_uci;
+    char* pv_json; // malloced JSON array of UCI strings, caller must free
     int32_t score_cp;
     double win_prob;
     double win_prob_stddev;
-    int depth;
+    uint8_t depth;
     uint64_t nodes;
-    int time_ms;
-    uint8_t info_flags; // bitfield using InfoFlags enum
+    uint32_t time_ms;
+    uint32_t info_flags; // bitmask using InfoFlags enum
     // Error reporting
     int error_code;
     char error_message[256];
@@ -115,12 +117,13 @@ struct SearchResult {
 struct ChessWizardOptions {
     bool use_nnue;
     const char *nnue_path;
-    bool use_tb;
+    bool use_syzygy;
     const char **tb_paths;
     const char *book_path;
-    int tt_size_mb;
-    int multi_pv;
+    uint32_t tt_size_mb;
+    uint8_t multi_pv;
     double resign_threshold;
+    uint64_t seed;
 };
 
 struct SearchLimits {

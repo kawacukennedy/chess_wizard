@@ -19,17 +19,20 @@
 #include <sstream>
 #include <cstring>
 #include <chrono>
+#include <unordered_map>
+#include <list>
 
 // --- Global Options ---
 ChessWizardOptions OPTIONS = {
     .use_nnue = false,
-    .nnue_path = "",
-    .use_tb = false,
+    .nnue_path = nullptr,
+    .use_syzygy = false,
     .tb_paths = nullptr,
-    .book_path = "",
+    .book_path = nullptr,
     .tt_size_mb = 32,
     .multi_pv = 1,
-    .resign_threshold = 0.01
+    .resign_threshold = 0.01,
+    .seed = 0
 };
 
 Book OPENING_BOOK;
@@ -43,7 +46,7 @@ void init_all() {
 }
 
 // --- C-API Implementation ---
-extern "C" SearchResult chess_wizard_suggest_move(const char* fen_or_moves, int max_time_ms, int max_depth, const ChessWizardOptions* opts) {
+extern "C" SearchResult chess_wizard_suggest_move(const char* fen_or_moves, uint32_t max_time_ms, uint8_t max_depth, const ChessWizardOptions* opts) {
     Position pos;
     pos.set_from_fen(std::string(fen_or_moves));
 

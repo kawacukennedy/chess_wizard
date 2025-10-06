@@ -12,8 +12,8 @@ struct TTEntry {
     int8_t depth;    // Search depth at which this entry was stored
     uint8_t flags;    // EXACT, LOWERBOUND, UPPERBOUND
     uint8_t age;      // For replacement policy
-    uint8_t padding[5]; // For 32-byte alignment
-};
+    uint8_t pad[7]; // For 32-byte alignment
+} __attribute__((aligned(64)));
 
 // Transposition Table
 class TranspositionTable {

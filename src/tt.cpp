@@ -40,18 +40,26 @@ void TranspositionTable::store(uint64_t key, uint32_t move, int32_t score, int8_
     if (!table) return;
     TTEntry* entry = &table[key % num_entries];
 
-    // From spec: "Replace if new.depth > old.depth OR old.age != current_age OR (new.depth == old.depth && key_lowbits xor old_key_lowbits < threshold)"
-    // We also replace empty entries.
-    const int threshold = 8192; // A chosen value for the key xor comparison threshold.
-    const uint64_t mask = 0xFFFF; // Use lower 16 bits for key_lowbits as per interpretation of spec.
+    // Replacement policy: Prefer deeper; if tie use age; tie-break deterministic
+    bool replace = false;
+    if (entry->key == 0) {
+        replace = true; // Empty entry
+    } else if (depth > entry->depth) {
+        replace = true; // Deeper
+    } else if (depth == entry->depth) {
+        if (entry->age != current_age) {
+            replace = true; // Age tie
+        } else {
+            // Tie-break: ((new.key ^ old.key) & 0xFFFFFFFF) < ((old.key ^ new.key) & 0xFFFFFFFF)
+            uint32_t new_xor = (key ^ entry->key) & 0xFFFFFFFF;
+            uint32_t old_xor = (entry->key ^ key) & 0xFFFFFFFF;
+            if (new_xor < old_xor) {
+                replace = true;
+            }
+        }
+    }
 
-    // Determine if we should replace the entry
-    const bool is_empty = (entry->key == 0);
-    const bool is_old = (entry->age != current_age);
-    const bool is_deeper = (depth > entry->depth);
-    const bool is_same_depth_tie_break = (depth == entry->depth && (((entry->key & mask) ^ (key & mask)) < threshold));
-
-    if (is_empty || is_old || is_deeper || is_same_depth_tie_break) {
+    if (replace) {
         entry->key = key;
         entry->move = move;
         entry->score = score;

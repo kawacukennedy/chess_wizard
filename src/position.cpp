@@ -275,18 +275,6 @@ std::string Position::to_fen_string() const {
 }
 
 void Position::make_move(Move move) {
-    // Save zobrist for threefold
-    if (history_ply < MAX_PLY) zobrist_history[history_ply] = hash_key;
-    history_ply++;
-
-    // Save current state for unmake_move
-    history.push_back({
-        castling_rights,
-        en_passant_sq,
-        halfmove_clock,
-        hash_key
-    });
-
     // Update Zobrist hash for side to move
     Square from_sq = move.from();
     Square to_sq = move.to();
@@ -294,6 +282,26 @@ void Position::make_move(Move move) {
     PieceType captured_piece = move.captured_piece();
     Move::PromotionType promoted_type = move.promotion();
     uint8_t flags = move.flags();
+
+    // Save zobrist for threefold
+    if (history_ply < MAX_PLY) zobrist_history[history_ply] = hash_key;
+    history_ply++;
+
+    // Save current state for unmake_move
+    StateInfo si = {};
+    si.from = from_sq;
+    si.to = to_sq;
+    si.moving_piece = piece_moved;
+    si.captured_piece = captured_piece;
+    si.promoted_piece = promoted_type == Move::NO_PROMOTION ? NO_PIECE : promotion_val_to_piece_type(promoted_type, side_to_move);
+    si.flags = flags;
+    si.prev_castle = castling_rights;
+    si.prev_ep_file = en_passant_sq == NO_SQUARE ? -1 : get_file(en_passant_sq);
+    si.prev_halfmove = halfmove_clock;
+    si.prev_zobrist = hash_key;
+    si.eval_delta = 0; // TODO: compute incremental eval delta
+    si.nnue_delta_count = 0; // TODO: nnue deltas
+    history.push_back(si);
 
     // Update halfmove clock (reset on pawn move or capture)
     if (piece_moved == WP || piece_moved == BP || captured_piece != NO_PIECE || (flags & Move::EN_PASSANT)) {
@@ -437,12 +445,20 @@ void Position::make_move(Move move) {
 }
 
 void Position::make_null_move() {
-    history.push_back({
-        castling_rights,
-        en_passant_sq,
-        halfmove_clock,
-        hash_key
-    });
+    StateInfo si = {};
+    si.from = NO_SQUARE;
+    si.to = NO_SQUARE;
+    si.moving_piece = NO_PIECE;
+    si.captured_piece = NO_PIECE;
+    si.promoted_piece = NO_PIECE;
+    si.flags = 0;
+    si.prev_castle = castling_rights;
+    si.prev_ep_file = en_passant_sq == NO_SQUARE ? -1 : get_file(en_passant_sq);
+    si.prev_halfmove = halfmove_clock;
+    si.prev_zobrist = hash_key;
+    si.eval_delta = 0;
+    si.nnue_delta_count = 0;
+    history.push_back(si);
 
     hash_key ^= Zobrist.side_to_move_key;
 
@@ -457,31 +473,35 @@ void Position::make_null_move() {
 }
 
 void Position::unmake_null_move() {
-    State prev_state = history.back();
+    StateInfo si = history.back();
     history.pop_back();
 
-    castling_rights = prev_state.castling_rights;
-    en_passant_sq = prev_state.en_passant_sq;
-    halfmove_clock = prev_state.halfmove_clock;
-    hash_key = prev_state.hash_key;
+    castling_rights = (CastlingRights)si.prev_castle;
+    en_passant_sq = si.prev_ep_file == -1 ? NO_SQUARE : (Square)(si.prev_ep_file + (side_to_move == WHITE ? 16 : 48));
+    halfmove_clock = si.prev_halfmove;
+    hash_key = si.prev_zobrist;
 
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
+
+    history_ply--;
 }
 
 void Position::unmake_move(Move move) {
-    State prev_state = history.back();
+    StateInfo si = history.back();
     history.pop_back();
 
-    castling_rights = prev_state.castling_rights;
-    en_passant_sq = prev_state.en_passant_sq;
-    halfmove_clock = prev_state.halfmove_clock;
-    hash_key = prev_state.hash_key;
+    castling_rights = (CastlingRights)si.prev_castle;
+    en_passant_sq = si.prev_ep_file == -1 ? NO_SQUARE : (Square)(si.prev_ep_file + (side_to_move == WHITE ? 48 : 16));
+    halfmove_clock = si.prev_halfmove;
+    hash_key = si.prev_zobrist;
 
     side_to_move = (side_to_move == WHITE) ? BLACK : WHITE;
 
     if (side_to_move == WHITE) {
         fullmove_number--;
     }
+
+    history_ply--;
 
     Square from_sq = move.from();
     Square to_sq = move.to();
