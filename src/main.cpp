@@ -74,6 +74,65 @@ void clear_cache() {
     cache_list.clear();
 }
 
+bool is_game_over(const Position& pos, std::string& reason) {
+    MoveList moves;
+    generate_legal_moves(pos, moves);
+    if (moves.empty()) {
+        if (pos.is_check()) {
+            reason = (pos.side_to_move == WHITE ? "Black wins (checkmate)" : "White wins (checkmate)");
+            return true;
+        } else {
+            reason = "Draw (stalemate)";
+            return true;
+        }
+    }
+    if (pos.halfmove_clock >= 100) {
+        reason = "Draw (50-move rule)";
+        return true;
+    }
+    // Insufficient material: only kings, or kings + same color bishops/knights
+    int white_pieces = 0, black_pieces = 0;
+    bool white_bishop = false, black_bishop = false;
+    bool white_knight = false, black_knight = false;
+    for (int i = 0; i < 64; ++i) {
+        PieceType p = pos.piece_on_square((Square)i);
+        if (p == WK || p == BK) continue;
+        if (p >= BP) {
+            black_pieces++;
+            if (p == BB) black_bishop = true;
+            else if (p == BN) black_knight = true;
+        } else {
+            white_pieces++;
+            if (p == WB) white_bishop = true;
+            else if (p == WN) white_knight = true;
+        }
+    }
+    if (white_pieces == 0 && black_pieces == 0) {
+        reason = "Draw (insufficient material)";
+        return true;
+    }
+    if (white_pieces == 1 && black_pieces == 0) {
+        if (white_bishop || white_knight) {
+            reason = "Draw (insufficient material)";
+            return true;
+        }
+    }
+    if (black_pieces == 1 && white_pieces == 0) {
+        if (black_bishop || black_knight) {
+            reason = "Draw (insufficient material)";
+            return true;
+        }
+    }
+    if (white_pieces == 1 && black_pieces == 1) {
+        if ((white_bishop && black_bishop) || (white_knight && black_knight)) {
+            // Same color bishops or both knights
+            reason = "Draw (insufficient material)";
+            return true;
+        }
+    }
+    return false;
+}
+
 void print_result(const SearchResult& result) {
     // JSON
     if (PV_LENGTH[0] > MAX_PLY) PV_LENGTH[0] = 0;
@@ -285,66 +344,135 @@ void cli_loop() {
     Position pos;
     pos.set_from_fen(START_FEN);
     TT.resize(32);
+    int time_ms = 2000; // default
 
-    std::cout << "Chess Wizard ready. Who started the match? Type \"me\" if you started (White) or \"opponent\" if they started (Black)." << std::endl;
+    std::cout << "Chess Wizard ready. Who started the match? Type 'me' if you started (White) or 'opponent' if they started (Black)." << std::endl;
     std::string response;
-    std::getline(std::cin, response);
-    bool me_started = (response == "me" || response == "white" || response == "ME" || response == "WHITE");
-
-    if (!me_started) {
-        // Opponent started, engine makes first move
-        SearchLimits limits;
-        limits.movetime = 5000;
-        limits.max_depth = 64;
-
-        SearchResult result = search_position(pos, limits, &OPTIONS);
-
-        print_result(result);
-
-        pos.make_move(get_move_from_uci(result.best_move_uci, pos));
-    } else {
-        // Me started, user makes first move
-        std::cout << "Enter your first move (UCI or SAN): ";
-        std::string user_move_str;
-        std::getline(std::cin, user_move_str);
-        Move user_move = get_move_from_uci(user_move_str, pos);
-        if (user_move.value != 0) {
-            pos.make_move(user_move);
-            std::cout << "Applied your move: " << user_move_str << std::endl;
-
-            // Engine's response
-            SearchLimits limits;
-            limits.movetime = 5000;
-            limits.max_depth = 64;
-
-            SearchResult result = search_position(pos, limits, &OPTIONS);
-
-            print_result(result);
-
-            pos.make_move(get_move_from_uci(result.best_move_uci, pos));
-        } else {
-            std::cout << "Invalid move. Exiting." << std::endl;
+    while (std::getline(std::cin, response)) {
+        if (response == "me" || response == "white" || response == "ME" || response == "WHITE" || response == "newgame") {
+            // Case me: set board to startpos
+            pos.set_from_fen(START_FEN);
+            // Check book
+            bool book_used = false;
+            if (OPTIONS.book_path && strlen(OPTIONS.book_path) > 0) {
+                if (!OPENING_BOOK.is_loaded()) {
+                    OPENING_BOOK.load(OPTIONS.book_path);
+                }
+                Move book_move = OPENING_BOOK.get_move(pos.hash_key);
+                if (book_move.value != 0) {
+                    // Assume threshold met for simplicity
+                    SearchResult result = {};
+                    std::string uci = book_move.to_uci_string();
+                    strncpy(result.best_move_uci, uci.c_str(), 7);
+                    std::string json = "[\"" + uci + "\"]";
+                    result.pv_json = (char*)malloc(json.size() + 1);
+                    strcpy(result.pv_json, json.c_str());
+                    result.score_cp = 0;
+                    result.win_prob = 0.5;
+                    result.depth = 0;
+                    result.nodes = 0;
+                    result.time_ms = 0;
+                    result.info_flags = BOOK;
+                    print_result(result);
+                    pos.make_move(book_move);
+                    book_used = true;
+                }
+            }
+            if (!book_used) {
+                SearchLimits limits;
+                limits.movetime = time_ms;
+                limits.max_depth = 64;
+                SearchResult result = search_position(pos, limits, &OPTIONS);
+                print_result(result);
+                pos.make_move(get_move_from_uci(result.best_move_uci, pos));
+            }
+            break;
+        } else if (response == "opponent" || response == "black" || response == "OPPONENT" || response == "BLACK") {
+            // Case opponent: prompt for opponent move
+            std::cout << "Enter opponent move (UCI or SAN):" << std::endl;
+            std::string opponent_move_str;
+            if (!std::getline(std::cin, opponent_move_str)) return;
+            Move opponent_move = get_move_from_uci(opponent_move_str, pos);
+            if (opponent_move.value == 0) {
+                std::cout << "Illegal move" << std::endl;
+                continue;
+            }
+            pos.make_move(opponent_move);
+            std::cout << "Applied opponent move: " << opponent_move_str << std::endl;
+            break;
+        } else if (response == "quit") {
             return;
+        } else {
+            std::cout << "Invalid response — type \"me\" or \"opponent\"" << std::endl;
         }
     }
 
-    std::cout << "Enter opponent move (UCI or SAN), or type newgame/undo/quit." << std::endl;
-
+    // Per-move loop
     std::string line;
     while (std::getline(std::cin, line)) {
+        std::cout << "Enter opponent move (UCI or SAN) or command (newgame/undo/quit): " << std::endl;
         if (line == "quit") break;
+        if (line == "help") {
+            std::cout << "Commands: newgame, undo, fen <FEN>, set time <ms>, set tt <MB>, quit, help" << std::endl;
+            continue;
+        }
         if (line == "newgame") {
             pos.set_from_fen(START_FEN);
+            clear_cache();
             std::cout << "New game started." << std::endl;
             continue;
         }
         if (line == "undo") {
             if (pos.history_size >= 2) {
+                // Reconstruct last two moves from history
                 StateInfo si1 = pos.history[pos.history_size - 1];
                 StateInfo si2 = pos.history[pos.history_size - 2];
-                Move m1 = si1.from == NO_SQUARE ? Move(0) : create_move((Square)si1.from, (Square)si1.to, (PieceType)si1.moving_piece, (PieceType)si1.captured_piece, si1.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si1.promoted_piece), si1.flags);
-                Move m2 = si2.from == NO_SQUARE ? Move(0) : create_move((Square)si2.from, (Square)si2.to, (PieceType)si2.moving_piece, (PieceType)si2.captured_piece, si2.promoted_piece == NO_PIECE ? 0 : piece_type_to_promotion_val((PieceType)si2.promoted_piece), si2.flags);
+                Move m1 = Move(0);
+                m1.set_from((Square)si1.from);
+                m1.set_to((Square)si1.to);
+                PieceType moving1 = pos.piece_on_square((Square)si1.to);
+                m1.set_moving_piece(moving1);
+                m1.set_captured_piece((PieceType)si1.captured_piece);
+                if (si1.promoted_piece != NO_PIECE) {
+                    Move::PromotionType prom = Move::NO_PROMOTION;
+                    switch (si1.promoted_piece) {
+                        case WN: case BN: prom = Move::PROMOTION_N; break;
+                        case WB: case BB: prom = Move::PROMOTION_B; break;
+                        case WR: case BR: prom = Move::PROMOTION_R; break;
+                        case WQ: case BQ: prom = Move::PROMOTION_Q; break;
+                    }
+                    m1.set_promotion(prom);
+                }
+                uint8_t flags1 = 0;
+                if (si1.captured_piece != NO_PIECE && abs(si1.to - si1.from) != 8 && abs(si1.to - si1.from) != 16) flags1 |= Move::EN_PASSANT;
+                if (abs(si1.to - si1.from) == 16 && (moving1 == WP || moving1 == BP)) flags1 |= Move::DOUBLE_PAWN_PUSH;
+                if ((si1.from == 4 && si1.to == 6) || (si1.from == 60 && si1.to == 62) || (si1.from == 4 && si1.to == 2) || (si1.from == 60 && si1.to == 58)) flags1 |= Move::CASTLING;
+                m1.set_flags(flags1);
+
                 pos.unmake_move(m1);
+
+                Move m2 = Move(0);
+                m2.set_from((Square)si2.from);
+                m2.set_to((Square)si2.to);
+                PieceType moving2 = pos.piece_on_square((Square)si2.to);
+                m2.set_moving_piece(moving2);
+                m2.set_captured_piece((PieceType)si2.captured_piece);
+                if (si2.promoted_piece != NO_PIECE) {
+                    Move::PromotionType prom = Move::NO_PROMOTION;
+                    switch (si2.promoted_piece) {
+                        case WN: case BN: prom = Move::PROMOTION_N; break;
+                        case WB: case BB: prom = Move::PROMOTION_B; break;
+                        case WR: case BR: prom = Move::PROMOTION_R; break;
+                        case WQ: case BQ: prom = Move::PROMOTION_Q; break;
+                    }
+                    m2.set_promotion(prom);
+                }
+                uint8_t flags2 = 0;
+                if (si2.captured_piece != NO_PIECE && abs(si2.to - si2.from) != 8 && abs(si2.to - si2.from) != 16) flags2 |= Move::EN_PASSANT;
+                if (abs(si2.to - si2.from) == 16 && (moving2 == WP || moving2 == BP)) flags2 |= Move::DOUBLE_PAWN_PUSH;
+                if ((si2.from == 4 && si2.to == 6) || (si2.from == 60 && si2.to == 62) || (si2.from == 4 && si2.to == 2) || (si2.from == 60 && si2.to == 58)) flags2 |= Move::CASTLING;
+                m2.set_flags(flags2);
+
                 pos.unmake_move(m2);
                 std::cout << "Undid last two moves." << std::endl;
             } else {
@@ -352,24 +480,77 @@ void cli_loop() {
             }
             continue;
         }
+        if (line.substr(0, 4) == "fen ") {
+            std::string fen = line.substr(4);
+            pos.set_from_fen(fen);
+            std::cout << "Board set to FEN: " << fen << std::endl;
+            continue;
+        }
+        if (line.substr(0, 9) == "set time ") {
+            try {
+                time_ms = std::stoi(line.substr(9));
+                std::cout << "Time set to " << time_ms << "ms." << std::endl;
+            } catch (...) {
+                std::cout << "Invalid time." << std::endl;
+            }
+            continue;
+        }
+        if (line.substr(0, 7) == "set tt ") {
+            try {
+                int tt_mb = std::stoi(line.substr(7));
+                OPTIONS.tt_size_mb = tt_mb;
+                TT.resize(tt_mb);
+                std::cout << "TT size set to " << tt_mb << "MB." << std::endl;
+            } catch (...) {
+                std::cout << "Invalid TT size." << std::endl;
+            }
+            continue;
+        }
 
-        // Try to parse as move
+        // Parse move
         Move move = get_move_from_uci(line, pos);
         if (move.value != 0) {
             pos.make_move(move);
             std::cout << "Applied move: " << line << std::endl;
 
-            // Now suggest move
+            // Check terminal
+            std::string reason;
+            if (is_game_over(pos, reason)) {
+                std::cout << "Game over — " << reason << std::endl;
+                std::cout << "New game? (yes/no)" << std::endl;
+                std::string answer;
+                if (std::getline(std::cin, answer) && (answer == "yes" || answer == "y")) {
+                    pos.set_from_fen(START_FEN);
+                    clear_cache();
+                    std::cout << "New game started." << std::endl;
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
+            // Suggest move
             SearchLimits limits;
-            limits.movetime = 5000; // 5 seconds default
+            limits.movetime = time_ms;
             limits.max_depth = 64;
-
             SearchResult result = search_position(pos, limits, &OPTIONS);
-
             print_result(result);
-
             pos.make_move(get_move_from_uci(result.best_move_uci, pos));
 
+            // Check terminal after engine move
+            if (is_game_over(pos, reason)) {
+                std::cout << "Game over — " << reason << std::endl;
+                std::cout << "New game? (yes/no)" << std::endl;
+                std::string answer;
+                if (std::getline(std::cin, answer) && (answer == "yes" || answer == "y")) {
+                    pos.set_from_fen(START_FEN);
+                    clear_cache();
+                    std::cout << "New game started." << std::endl;
+                    continue;
+                } else {
+                    break;
+                }
+            }
         } else {
             std::cout << "Invalid move or command." << std::endl;
         }

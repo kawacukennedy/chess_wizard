@@ -167,12 +167,8 @@ void generate_legal_moves(const Position& pos, MoveList& legal_moves) {
 
     for (const auto& move : pseudo_legal_moves) {
         Position temp_pos = pos;
-        temp_pos.make_move(move);
-        Color moved_color = (temp_pos.side_to_move == WHITE) ? BLACK : WHITE;
-        Square king_sq = get_king_square(temp_pos, moved_color);
-        if (!temp_pos.is_square_attacked(king_sq, temp_pos.side_to_move)) {
+        if (temp_pos.make_move(move)) {
             legal_moves.push_back(move);
         }
-        temp_pos.unmake_move(move);
     }
 }

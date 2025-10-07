@@ -1,0 +1,5 @@
+/Volumes/RCA/algo/CMakeFiles/chess_wizard.dir
+/Volumes/RCA/algo/CMakeFiles/libchesswizard.dir
+/Volumes/RCA/algo/CMakeFiles/libchesswizard_shared.dir
+/Volumes/RCA/algo/CMakeFiles/edit_cache.dir
+/Volumes/RCA/algo/CMakeFiles/rebuild_cache.dir

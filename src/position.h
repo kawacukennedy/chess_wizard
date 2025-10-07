@@ -27,18 +27,15 @@ enum CastlingRights : uint8_t {
 struct StateInfo {
     uint8_t from;
     uint8_t to;
-    uint8_t moving_piece;
     uint8_t captured_piece;
     uint8_t promoted_piece;
-    uint8_t flags;
     uint8_t prev_castle;
-    uint8_t prev_ep_sq;
+    int8_t prev_ep_file;
     uint16_t prev_halfmove;
     uint64_t prev_zobrist;
     int32_t eval_delta;
     uint8_t nnue_delta_count;
-    // Padding to <=32 bytes
-    uint8_t padding[1];
+    uint8_t padding[9]; // Padding to 32 bytes
 };
 
 class Position {
@@ -54,6 +51,15 @@ public:
     // Zobrist hash key for transposition table
     uint64_t hash_key;
 
+    // Piece on square array
+    uint8_t piece_of_square[64];
+
+    // Zobrist history stack
+    uint64_t zobrist_history[MAX_PLY];
+
+    // NNUE delta buffer: max 8 toggles per ply
+    uint8_t nnue_delta_buffer[MAX_PLY * 8];
+
     // History stack for unmake_move
     std::array<StateInfo, 1024> history;
     size_t history_size = 0;
@@ -64,7 +70,7 @@ public:
     void set_from_fen(const std::string& fen);
 
     // Make and unmake moves
-    void make_move(Move move);
+    bool make_move(Move move);
     void unmake_move(Move move);
 
     // Make and unmake null moves

@@ -62,26 +62,26 @@ Bitboard get_bishop_attacks(Square sq, Bitboard blockers) {
     // Northeast
     for (r = tr + 1, f = tf + 1; r <= 7 && f <= 7; ++r, ++f) {
         Square s = (Square)(r * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // Northwest
     for (r = tr + 1, f = tf - 1; r <= 7 && f >= 0; ++r, --f) {
         Square s = (Square)(r * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // Southeast
     for (r = tr - 1, f = tf + 1; r >= 0 && f <= 7; --r, ++f) {
         Square s = (Square)(r * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // Southwest
     for (r = tr - 1, f = tf - 1; r >= 0 && f >= 0; --r, --f) {
         Square s = (Square)(r * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     return attacks;
 }
@@ -95,26 +95,26 @@ Bitboard get_rook_attacks(Square sq, Bitboard blockers) {
     // North
     for (r = tr + 1; r <= 7; ++r) {
         Square s = (Square)(r * 8 + tf);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // South
     for (r = tr - 1; r >= 0; --r) {
         Square s = (Square)(r * 8 + tf);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // East
     for (f = tf + 1; f <= 7; ++f) {
         Square s = (Square)(tr * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     // West
     for (f = tf - 1; f >= 0; --f) {
         Square s = (Square)(tr * 8 + f);
-        if (get_bit(blockers, s)) break;
         attacks |= (1ULL << s);
+        if (get_bit(blockers, s)) break;
     }
     return attacks;
 }

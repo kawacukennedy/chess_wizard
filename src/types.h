@@ -152,6 +152,10 @@ inline Color get_piece_color(PieceType pt) {
     return (pt >= BP) ? BLACK : WHITE;
 }
 
+// Helper functions for square
+inline int file_of(Square s) { return s % 8; }
+inline int rank_of(Square s) { return s / 8; }
+
 enum GenericPieceType {
     PAWN,
     KNIGHT,

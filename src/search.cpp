@@ -60,10 +60,13 @@ std::tuple<int, int, int> rollout(Position pos, int max_depth) {
         // NNUE-based policy: softmax over evaluation scores
         std::vector<int> evals;
         for (auto m : moves) {
-            pos.make_move(m);
-            int eval = evaluate(pos);
-            pos.unmake_move(m);
-            evals.push_back(eval);
+            if (pos.make_move(m)) {
+                int eval = evaluate(pos);
+                pos.unmake_move(m);
+                evals.push_back(eval);
+            } else {
+                evals.push_back(-MATE_VALUE);
+            }
         }
         int max_eval = *std::max_element(evals.begin(), evals.end());
         std::vector<double> probs;
@@ -211,17 +214,23 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
 
     if (ply >= MAX_PLY) return evaluate(pos);
 
+    bool in_check = pos.is_check();
     int stand_pat = evaluate(pos);
-    if (stand_pat >= beta) return beta;
-    alpha = std::max(alpha, stand_pat);
+    if (!in_check && stand_pat >= beta) return beta;
+    if (!in_check) alpha = std::max(alpha, stand_pat);
 
     MoveList captures;
     generate_moves(pos, captures, true);
     Move tt_move = Move(0);
     order_moves(captures, ply, tt_move, pos);
 
+    if (captures.empty()) {
+        if (in_check) return -(MATE_VALUE - ply);
+        else return stand_pat;
+    }
+
     for (const auto& move : captures) {
-        pos.make_move(move);
+        if (!pos.make_move(move)) continue;
         NNUE::nnue_evaluator.update_make(pos, move);
         int score = -quiescence(-beta, -alpha, ply + 1, pos);
         NNUE::nnue_evaluator.update_unmake(pos, move);
@@ -319,7 +328,7 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             }
         }
 
-        pos.make_move(move);
+        if (!pos.make_move(move)) continue;
         NNUE::nnue_evaluator.update_make(pos, move);
         moves_searched++;
         int score;
@@ -337,6 +346,14 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             if (score > alpha && score < beta) {
                 score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
             }
+        }
+        if (score > alpha) {
+            alpha = score;
+            PV_TABLE[ply][ply] = move;
+            for (int i = 0; i < PV_LENGTH[ply + 1]; ++i) {
+                PV_TABLE[ply][ply + 1 + i] = PV_TABLE[ply + 1][ply + 1 + i];
+            }
+            PV_LENGTH[ply] = 1 + PV_LENGTH[ply + 1];
         }
         NNUE::nnue_evaluator.update_unmake(pos, move);
         pos.unmake_move(move);
@@ -402,12 +419,13 @@ std::vector<std::pair<Move, int>> get_root_moves_scores(Position& pos, int depth
 
     std::vector<std::pair<Move, int>> scores;
     for (const auto& move : moves) {
-        pos.make_move(move);
-        NNUE::nnue_evaluator.update_make(pos, move);
-        int score = -search(-MATE_VALUE, MATE_VALUE, depth - 1, 1, pos, true);
-        NNUE::nnue_evaluator.update_unmake(pos, move);
-        pos.unmake_move(move);
-        scores.push_back({move, score});
+        if (pos.make_move(move)) {
+            NNUE::nnue_evaluator.update_make(pos, move);
+            int score = -search(-MATE_VALUE, MATE_VALUE, depth - 1, 1, pos, true);
+            NNUE::nnue_evaluator.update_unmake(pos, move);
+            pos.unmake_move(move);
+            scores.push_back({move, score});
+        }
     }
     return scores;
 }
@@ -621,9 +639,10 @@ uint64_t perft(int depth, Position& pos) {
     }
 
     for (const auto& move : moves) {
-        pos.make_move(move);
-        nodes += perft(depth - 1, pos);
-        pos.unmake_move(move);
+        if (pos.make_move(move)) {
+            nodes += perft(depth - 1, pos);
+            pos.unmake_move(move);
+        }
     }
 
     return nodes;
