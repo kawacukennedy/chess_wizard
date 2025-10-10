@@ -4,7 +4,7 @@
 #include "move.h"
 #include <iostream>
 
-void generate_pawn_moves(const Position& pos, MoveList& moves, bool captures_only) {
+void generate_pawn_moves(const Position& pos, Move* captures, int& num_captures, Move* quiets, int& num_quiets, bool captures_only) {
     Color us = pos.side_to_move;
     Color them = (us == WHITE) ? BLACK : WHITE;
     Bitboard our_pawns = pos.piece_bitboards[us == WHITE ? WP : BP];
@@ -26,19 +26,19 @@ void generate_pawn_moves(const Position& pos, MoveList& moves, bool captures_onl
             Square to = static_cast<Square>(from + push_offset);
             if (!get_bit(all_pieces, to)) {
                 if (get_rank(to) == promotion_rank) {
-                    moves.push_back(create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_Q));
-                    moves.push_back(create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_R));
-                    moves.push_back(create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_B));
-                    moves.push_back(create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_N));
+                    quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_Q);
+                    quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_R);
+                    quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_B);
+                    quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::PROMOTION_N);
                 } else {
-                    moves.push_back(create_move(from, to, pos.piece_on_square(from)));
+                    quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from));
                 }
 
                 // Double push
                 if (r == dbl_push_rank) {
                     to = static_cast<Square>(from + dbl_push_offset);
                     if (!get_bit(all_pieces, to)) {
-                        moves.push_back(create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::NO_PROMOTION, Move::DOUBLE_PAWN_PUSH));
+                        quiets[num_quiets++] = create_move(from, to, pos.piece_on_square(from), NO_PIECE, Move::NO_PROMOTION, Move::DOUBLE_PAWN_PUSH);
                     }
                 }
             }
@@ -55,16 +55,16 @@ void generate_pawn_moves(const Position& pos, MoveList& moves, bool captures_onl
         while (attacks) {
             Square to = pop_bit(attacks);
             if (to == pos.en_passant_sq) {
-                moves.push_back(create_move(from, to, pos.piece_on_square(from), (us == WHITE ? BP : WP), Move::NO_PROMOTION, Move::EN_PASSANT));
+                captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), (us == WHITE ? BP : WP), Move::NO_PROMOTION, Move::EN_PASSANT);
             } else {
                 PieceType captured = pos.piece_on_square(to);
                 if (get_rank(to) == promotion_rank) {
-                     moves.push_back(create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_Q));
-                     moves.push_back(create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_R));
-                     moves.push_back(create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_B));
-                     moves.push_back(create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_N));
+                     captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_Q);
+                     captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_R);
+                     captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_B);
+                     captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), captured, Move::PROMOTION_N);
                 } else {
-                moves.push_back(create_move(from, to, pos.piece_on_square(from), captured));
+                captures[num_captures++] = create_move(from, to, pos.piece_on_square(from), captured);
                 }
             }
         }
@@ -72,7 +72,7 @@ void generate_pawn_moves(const Position& pos, MoveList& moves, bool captures_onl
 }
 
 template<PieceType Pt>
-void generate_piece_moves(const Position& pos, MoveList& moves, bool captures_only) {
+void generate_piece_moves(const Position& pos, Move* captures, int& num_captures, Move* quiets, int& num_quiets, bool captures_only) {
     Color us = pos.side_to_move;
     Bitboard our_pieces = pos.piece_bitboards[Pt];
     Bitboard their_pieces = pos.occupancy_bitboards[us == WHITE ? BLACK : WHITE];
@@ -87,12 +87,16 @@ void generate_piece_moves(const Position& pos, MoveList& moves, bool captures_on
         while (targets) {
             Square to = pop_bit(targets);
             PieceType captured = get_bit(their_pieces, to) ? pos.piece_on_square(to) : NO_PIECE;
-            moves.push_back(create_move(from, to, Pt, captured));
+            if (captured != NO_PIECE) {
+                captures[num_captures++] = create_move(from, to, Pt, captured);
+            } else {
+                quiets[num_quiets++] = create_move(from, to, Pt, captured);
+            }
         }
     }
 }
 
-void generate_castling_moves(const Position& pos, MoveList& moves) {
+void generate_castling_moves(const Position& pos, Move* quiets, int& num_quiets) {
     Color us = pos.side_to_move;
     if (pos.is_check()) return;
 
@@ -103,7 +107,7 @@ void generate_castling_moves(const Position& pos, MoveList& moves) {
             !pos.is_square_attacked(E1, BLACK) &&
             !pos.is_square_attacked(F1, BLACK) &&
             !pos.is_square_attacked(G1, BLACK)) {
-            moves.push_back(create_move(E1, G1, WK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING));
+            quiets[num_quiets++] = create_move(E1, G1, WK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
         if ((pos.castling_rights & WHITE_QUEENSIDE) &&
             !get_bit(pos.occupancy_bitboards[BOTH], D1) &&
@@ -112,7 +116,7 @@ void generate_castling_moves(const Position& pos, MoveList& moves) {
             !pos.is_square_attacked(E1, BLACK) &&
             !pos.is_square_attacked(D1, BLACK) &&
             !pos.is_square_attacked(C1, BLACK)) {
-            moves.push_back(create_move(E1, C1, WK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING));
+            quiets[num_quiets++] = create_move(E1, C1, WK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
     } else { // BLACK
         if ((pos.castling_rights & BLACK_KINGSIDE) &&
@@ -121,7 +125,7 @@ void generate_castling_moves(const Position& pos, MoveList& moves) {
             !pos.is_square_attacked(E8, WHITE) &&
             !pos.is_square_attacked(F8, WHITE) &&
             !pos.is_square_attacked(G8, WHITE)) {
-            moves.push_back(create_move(E8, G8, BK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING));
+            quiets[num_quiets++] = create_move(E8, G8, BK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
         if ((pos.castling_rights & BLACK_QUEENSIDE) &&
             !get_bit(pos.occupancy_bitboards[BOTH], D8) &&
@@ -130,33 +134,44 @@ void generate_castling_moves(const Position& pos, MoveList& moves) {
             !pos.is_square_attacked(E8, WHITE) &&
             !pos.is_square_attacked(D8, WHITE) &&
             !pos.is_square_attacked(C8, WHITE)) {
-            moves.push_back(create_move(E8, C8, BK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING));
+            quiets[num_quiets++] = create_move(E8, C8, BK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
     }
 }
 
 
 void generate_moves(const Position& pos, MoveList& moves, bool captures_only) {
+    Move captures[256];
+    Move quiets[256];
+    int num_captures = 0, num_quiets = 0;
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, captures_only);
     moves.clear();
-    
-    generate_pawn_moves(pos, moves, captures_only);
+    for (int i = 0; i < num_captures; ++i) moves.push_back(captures[i]);
+    for (int i = 0; i < num_quiets; ++i) moves.push_back(quiets[i]);
+}
+
+void generate_moves(const Position& pos, Move* captures, int& num_captures, Move* quiets, int& num_quiets, bool captures_only) {
+    num_captures = 0;
+    num_quiets = 0;
+
+    generate_pawn_moves(pos, captures, num_captures, quiets, num_quiets, captures_only);
 
     if (pos.side_to_move == WHITE) {
-        generate_piece_moves<WN>(pos, moves, captures_only);
-        generate_piece_moves<WB>(pos, moves, captures_only);
-        generate_piece_moves<WR>(pos, moves, captures_only);
-        generate_piece_moves<WQ>(pos, moves, captures_only);
-        generate_piece_moves<WK>(pos, moves, captures_only);
+        generate_piece_moves<WN>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<WB>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<WR>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<WQ>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<WK>(pos, captures, num_captures, quiets, num_quiets, captures_only);
     } else {
-        generate_piece_moves<BN>(pos, moves, captures_only);
-        generate_piece_moves<BB>(pos, moves, captures_only);
-        generate_piece_moves<BR>(pos, moves, captures_only);
-        generate_piece_moves<BQ>(pos, moves, captures_only);
-        generate_piece_moves<BK>(pos, moves, captures_only);
+        generate_piece_moves<BN>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<BB>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<BR>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<BQ>(pos, captures, num_captures, quiets, num_quiets, captures_only);
+        generate_piece_moves<BK>(pos, captures, num_captures, quiets, num_quiets, captures_only);
     }
 
     if (!captures_only) {
-        generate_castling_moves(pos, moves);
+        generate_castling_moves(pos, quiets, num_quiets);
     }
 }
 

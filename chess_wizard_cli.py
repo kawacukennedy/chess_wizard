@@ -41,10 +41,7 @@ class SearchResult(Structure):
         ("nodes", c_uint64),
         ("time_ms", c_uint32),
         ("info_flags", c_uint32),
-        ("error_code", c_int),
-        ("error_message", c_char * 256),
-        ("last_valid_move", c_char * 8),
-        ("debug_zobrist", c_uint64)
+        ("error_message", c_char_p)
     ]
 
 # Function signature

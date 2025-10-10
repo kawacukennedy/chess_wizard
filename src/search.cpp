@@ -41,6 +41,12 @@ Move KILLER_MOVES[MAX_PLY + 1][2];
 // --- History Heuristic ---
 int HISTORY_TABLE[12][64];
 
+// --- Move Lists per Ply ---
+Move CAPTURES[MAX_PLY][128];
+Move QUIETS[MAX_PLY][128];
+int NUM_CAPTURES[MAX_PLY];
+int NUM_QUIETS[MAX_PLY];
+
 // --- Time Management ---
 std::chrono::steady_clock::time_point start_time;
 
@@ -199,9 +205,39 @@ int policy_score(Move m) {
 
 // --- Move Ordering ---
 void order_moves(MoveList& moves, int ply, Move tt_move, const Position& pos) {
+    for (auto& move : moves) {
+        move.set_ordering_hint(score_move(move, ply, tt_move, pos));
+    }
     std::sort(moves.begin(), moves.end(), [&](Move a, Move b) {
-        return score_move(a, ply, tt_move, pos) > score_move(b, ply, tt_move, pos);
+        return a.ordering_hint() > b.ordering_hint();
     });
+}
+
+void order_moves(Move* captures, int num_captures, Move* quiets, int num_quiets, int ply, Move tt_move, const Position& pos) {
+    // Sort captures
+    for (int i = 0; i < num_captures; ++i) {
+        captures[i].set_ordering_hint(score_move(captures[i], ply, tt_move, pos));
+    }
+    // Simple bubble sort for captures
+    for (int i = 0; i < num_captures - 1; ++i) {
+        for (int j = 0; j < num_captures - i - 1; ++j) {
+            if (captures[j].ordering_hint() < captures[j+1].ordering_hint()) {
+                std::swap(captures[j], captures[j+1]);
+            }
+        }
+    }
+    // Sort quiets
+    for (int i = 0; i < num_quiets; ++i) {
+        quiets[i].set_ordering_hint(score_move(quiets[i], ply, tt_move, pos));
+    }
+    // Simple bubble sort for quiets
+    for (int i = 0; i < num_quiets - 1; ++i) {
+        for (int j = 0; j < num_quiets - i - 1; ++j) {
+            if (quiets[j].ordering_hint() < quiets[j+1].ordering_hint()) {
+                std::swap(quiets[j], quiets[j+1]);
+            }
+        }
+    }
 }
 
 // --- Quiescence Search ---
@@ -219,17 +255,21 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     if (!in_check && stand_pat >= beta) return beta;
     if (!in_check) alpha = std::max(alpha, stand_pat);
 
-    MoveList captures;
-    generate_moves(pos, captures, true);
+    Move* captures = CAPTURES[ply];
+    int& num_captures = NUM_CAPTURES[ply];
+    Move* quiets = QUIETS[ply];
+    int& num_quiets = NUM_QUIETS[ply];
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, true);
     Move tt_move = Move(0);
-    order_moves(captures, ply, tt_move, pos);
+    order_moves(captures, num_captures, quiets, 0, ply, tt_move, pos); // quiets not used in qsearch
 
-    if (captures.empty()) {
+    if (num_captures == 0) {
         if (in_check) return -(MATE_VALUE - ply);
         else return stand_pat;
     }
 
-    for (const auto& move : captures) {
+    for (int i = 0; i < num_captures; ++i) {
+        Move move = captures[i];
         if (!pos.make_move(move)) continue;
         NNUE::nnue_evaluator.update_make(pos, move);
         int score = -quiescence(-beta, -alpha, ply + 1, pos);
@@ -309,9 +349,12 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
         }
     }
 
-    MoveList moves;
-    generate_moves(pos, moves);
-    order_moves(moves, ply, tt_move, pos);
+    Move* captures = CAPTURES[ply];
+    int& num_captures = NUM_CAPTURES[ply];
+    Move* quiets = QUIETS[ply];
+    int& num_quiets = NUM_QUIETS[ply];
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, false);
+    order_moves(captures, num_captures, quiets, num_quiets, ply, tt_move, pos);
 
     int moves_searched = 0;
     int best_score = -MATE_VALUE;
@@ -319,7 +362,8 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
     Move best_move = Move(0);
     uint8_t tt_flag = TT_UPPER;
 
-    for (const auto& move : moves) {
+    for (int i = 0; i < num_captures + num_quiets; ++i) {
+        Move move = (i < num_captures) ? captures[i] : quiets[i - num_captures];
         if (!in_check && depth <= 2 && !move.is_capture() && !move.is_promotion()) {
             if (static_eval == -1) static_eval = evaluate(pos);
             int futility_margin = 100 + 40 * depth;
@@ -503,27 +547,14 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     std::vector<std::pair<Move, int>> last_moves_scores;
 
     for (int current_depth = 1; current_depth <= Limits.max_depth; ++current_depth) {
-        int aspiration = std::max(80, 5 * current_depth);
-        int alpha = last_score - aspiration;
-        int beta = last_score + aspiration;
+        // Disable aspiration for now
+        int alpha = -MATE_VALUE;
+        int beta = MATE_VALUE;
 
-        int expansions = 0;
-        while (expansions < 3) {
-            score = search(alpha, beta, current_depth, 0, pos, true);
+        score = search(alpha, beta, current_depth, 0, pos, true);
 
-            if (StopSearch && current_depth > 1) {
-                break;
-            }
-
-            if (score > alpha && score < beta) {
-                // Search completed within window
-                break;
-            }
-
-            // Expand window
-            alpha = (score <= alpha) ? alpha - aspiration * (1 << expansions) : -MATE_VALUE;
-            beta = (score >= beta) ? beta + aspiration * (1 << expansions) : MATE_VALUE;
-            expansions++;
+        if (StopSearch && current_depth > 1) {
+            break;
         }
 
         last_moves_scores = get_root_moves_scores(pos, current_depth);

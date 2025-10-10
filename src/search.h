@@ -29,6 +29,7 @@ std::tuple<int, int, int> rollout(Position pos, int max_depth);
 // Move ordering
 int score_move(Move move, int ply, Move tt_move, const Position& pos);
 void order_moves(MoveList& moves, int ply, Move tt_move, const Position& pos);
+void order_moves(Move* captures, int num_captures, Move* quiets, int num_quiets, int ply, Move tt_move, const Position& pos);
 
 // Search globals (to be initialized per search)
 extern SearchLimits Limits;

@@ -107,11 +107,7 @@ struct SearchResult {
     uint64_t nodes;
     uint32_t time_ms;
     uint32_t info_flags; // bitmask using InfoFlags enum
-    // Error reporting
-    int error_code;
-    char error_message[256];
-    char last_valid_move[8];
-    uint64_t debug_zobrist;
+    char* error_message; // optional error message, caller must free
 };
 
 struct ChessWizardOptions {
