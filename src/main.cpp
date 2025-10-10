@@ -147,11 +147,12 @@ void print_result(const SearchResult& result) {
     std::string source = "ENGINE";
     if (result.info_flags & BOOK) source = "BOOK";
     else if (result.info_flags & TB) source = "TB";
+    else if (result.info_flags & CACHE) source = "CACHE";
     else if (result.info_flags & MC_TIEBREAK) source = "MC";
 
     std::cout << "Recommended: " << result.best_move_uci << "  Score: " << result.score_cp
-              << "  WinProb: " << (result.win_prob * 100) << "%  StdDev: " << (result.win_prob_stddev * 100) << "%  Depth: " << (int)result.depth
-              << "  Nodes: " << result.nodes << "  Time: " << result.time_ms << "ms  Source: " << source << std::endl;
+              << "  WinProb: " << (result.win_prob * 100) << "%  Depth: " << (int)result.depth
+              << "  Time: " << result.time_ms << "ms  Source: " << source << std::endl;
 }
 
 void run_perft_tests() {
@@ -161,7 +162,7 @@ void run_perft_tests() {
 
     // Perft targets from spec
     std::vector<uint64_t> targets = {20, 400, 8902, 197281, 4865609, 119060324};
-    for (int depth = 2; depth <= 2; ++depth) {
+    for (int depth = 1; depth <= 6; ++depth) {
         uint64_t nodes = perft(depth, pos);
         std::cout << "Perft " << depth << ": " << nodes << " (expected " << targets[depth-1] << ")";
         if (nodes == targets[depth-1]) {

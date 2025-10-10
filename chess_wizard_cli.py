@@ -111,10 +111,19 @@ def print_result(result):
         source = "BOOK"
     elif result.info_flags & 2:  # TB
         source = "TB"
-    elif result.info_flags & 4:  # MC_TIEBREAK
+    elif result.info_flags & 4:  # CACHE
+        source = "CACHE"
+    elif result.info_flags & 8:  # MC_TIEBREAK
         source = "MC"
 
-    print(f"Recommended: {result.best_move_uci.decode('utf-8')}  Score: {result.score_cp}  WinProb: {result.win_prob*100:.1f}%  StdDev: {result.win_prob_stddev*100:.1f}%  Depth: {result.depth}  Nodes: {result.nodes}  Time: {result.time_ms}ms  Source: {source}")
+    uci = result.best_move_uci.decode('utf-8')
+    try:
+        move = board.parse_uci(uci)
+        san = board.san(move)
+        recommended = f"{san} ({uci})"
+    except:
+        recommended = uci
+    print(f"Recommended: {recommended}  Score: {result.score_cp}  WinProb: {result.win_prob*100:.1f}%  Depth: {result.depth}  Nodes: {result.nodes}  Time: {result.time_ms}ms  Source: {source}")
 
 def normalize_fen(board):
     return board.fen().rstrip()

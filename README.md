@@ -48,11 +48,13 @@ The engine follows a specification defined in `chess_wizard_spec.json`, ensuring
 
 ## Performance Targets
 
-*   **x86_64 with AVX2:** >= 6,000,000 nodes/sec
+*   **x86_64 with AVX2 (modern CPUs):** >= 6,000,000 nodes/sec
 *   **x86_64 without AVX2:** >= 3,000,000 nodes/sec
 *   **ARM64 (NEON):** >= 3,000,000 nodes/sec
+*   **Response Latency:** <= 2 seconds per move at default time control (2000ms) when the engine process is persistent
+*   **Memory Usage:** Default TT size 32 MiB (configurable up to 1024 MiB)
 
-These targets are measured on standard hardware configurations and may vary based on system specifics.
+These targets are measured on standard hardware configurations and may vary based on system specifics. The engine is optimized for -O3 -march=native (optional; document ISA effects in README).
 
 ## Building Chess Wizard
 
@@ -78,6 +80,9 @@ This project uses CMake for building.
     cmake .. -DCMAKE_BUILD_TYPE=Release
     cmake --build .
     ```
+    The build uses the following recommended compiler flags for performance:
+    - `-O3 -flto -funroll-loops -fomit-frame-pointer -fno-exceptions -fno-rtti -DNDEBUG`
+    - `-march=native` (optional; enables ISA-specific optimizations, document effects)
 
 3.  **Run the engine:**
     The executable `chess_wizard` will be located in the `build` directory. You can run it directly to use the UCI interface.
@@ -113,7 +118,15 @@ For direct command-line usage:
 ./chess_wizard --help  # Display help
 ./chess_wizard --test  # Run unit tests
 ./chess_wizard --integration-test  # Run integration tests
+./chess_wizard --cli  # Interactive CLI mode
 ```
+
+The interactive CLI mode follows this flow:
+- Asks who started the match ('me' for White, 'opponent' for Black).
+- If 'me', immediately suggests the best move for White.
+- If 'opponent', prompts for opponent's move, then suggests reply.
+- Continues with move suggestions until game end.
+- Supports commands: newgame, undo, fen <FEN>, set time <ms>, set tt <MB>, quit, help.
 
 You can also pipe UCI commands:
 

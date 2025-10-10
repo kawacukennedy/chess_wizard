@@ -92,9 +92,10 @@ enum InfoFlags : uint32_t {
     NO_INFO_FLAG = 0,
     BOOK = 1 << 0,
     TB = 1 << 1,
-    MC_TIEBREAK = 1 << 2,
-    RESIGN = 1 << 3,
-    ERROR = 1 << 4
+    CACHE = 1 << 2,
+    MC_TIEBREAK = 1 << 3,
+    RESIGN = 1 << 4,
+    ERROR = 1 << 5
 };
 
 struct SearchResult {
