@@ -175,6 +175,16 @@ void generate_moves(const Position& pos, Move* captures, int& num_captures, Move
     }
 }
 
+void generate_moves(const Position& pos, Move* moves, int& num_moves, bool captures_only) {
+    Move captures[256];
+    Move quiets[256];
+    int num_captures = 0, num_quiets = 0;
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, captures_only);
+    num_moves = 0;
+    for (int i = 0; i < num_captures; ++i) moves[num_moves++] = captures[i];
+    for (int i = 0; i < num_quiets; ++i) moves[num_moves++] = quiets[i];
+}
+
 void generate_legal_moves(const Position& pos, MoveList& legal_moves) {
     legal_moves.clear();
     MoveList pseudo_legal_moves;

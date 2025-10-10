@@ -31,6 +31,58 @@ std::string Move::to_uci_string() const {
     return uci;
 }
 
+std::string Move::to_san_string(const Position& pos) const {
+    PieceType pt = moving_piece();
+    int generic = pt % 6;
+    char piece_char = " PNBRQK"[generic];
+    std::string san;
+    if (generic != 0) san += piece_char; // not pawn
+
+    // Disambiguation
+    Position temp_pos = pos;
+    MoveList legal_moves;
+    generate_legal_moves(temp_pos, legal_moves);
+    std::vector<Move> candidates;
+    for (const auto& m : legal_moves) {
+        if (m.to() == to() && (m.moving_piece() % 6) == generic) {
+            candidates.push_back(m);
+        }
+    }
+    if (candidates.size() > 1) {
+        // Need disambiguation
+        char from_file = 'a' + (from() % 8);
+        char from_rank = '1' + (from() / 8);
+        bool need_file = false, need_rank = false;
+        for (const auto& m : candidates) {
+            if (m.from() % 8 != from() % 8) need_file = true;
+            if (m.from() / 8 != from() / 8) need_rank = true;
+        }
+        if (need_file) san += from_file;
+        if (need_rank) san += from_rank;
+    }
+
+    if (is_capture()) san += 'x';
+    san += square_to_string(to());
+    if (is_promotion()) {
+        san += '=';
+        san += toupper(promotion_type_to_char(promotion()));
+    }
+
+    // Check if gives check or mate
+    temp_pos.make_move(*this);
+    if (temp_pos.is_check()) {
+        MoveList after_moves;
+        generate_legal_moves(temp_pos, after_moves);
+        if (after_moves.empty()) {
+            san += '#';
+        } else {
+            san += '+';
+        }
+    }
+
+    return san;
+}
+
 // Function to get a move from a UCI string
 Move get_move_from_uci(const std::string& uci_str, const Position& pos) {
     if (uci_str.length() < 4) {

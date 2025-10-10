@@ -15,6 +15,12 @@ uint16_t swap_uint16(uint16_t n) {
     return (n << 8) | (n >> 8);
 }
 
+uint32_t swap_uint32(uint32_t n) {
+    n = ((n & 0x0000FFFF) << 16) | ((n & 0xFFFF0000) >> 16);
+    n = ((n & 0x00FF00FF) << 8) | ((n & 0xFF00FF00) >> 8);
+    return n;
+}
+
 bool Book::load(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
@@ -27,6 +33,7 @@ bool Book::load(const std::string& path) {
         entry.key = swap_uint64(entry.key);
         entry.move = swap_uint16(entry.move);
         entry.weight = swap_uint16(entry.weight);
+        entry.learn = swap_uint32(entry.learn);
         entries.push_back(entry);
     }
 
@@ -38,9 +45,9 @@ Move Book::get_move(uint64_t hash) {
     const BookEntry* best_entry = nullptr;
     uint16_t max_weight = 0;
 
-    // Find all moves for the given hash and select the one with the highest weight
+    // Find all moves for the given hash and select the one with the highest weight that qualifies
     for (const auto& entry : entries) {
-        if (entry.key == hash && entry.weight > max_weight) {
+        if (entry.key == hash && entry.weight >= 10 && entry.learn >= 500 && entry.weight > max_weight) {
             max_weight = entry.weight;
             best_entry = &entry;
         }

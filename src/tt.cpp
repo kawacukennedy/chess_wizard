@@ -1,6 +1,9 @@
 #include "tt.h"
 #include <cstring> // For memset
 
+// Extern history table for halving on age overflow
+extern int HISTORY_TABLE[12][64];
+
 // Global instance of the TranspositionTable
 TranspositionTable TT;
 
@@ -24,7 +27,16 @@ void TranspositionTable::clear() {
 }
 
 void TranspositionTable::increment_age() {
+    uint8_t old_age = current_age;
     current_age++;
+    if (current_age < old_age) { // overflow
+        // Halve history table
+        for (int i = 0; i < 12; ++i) {
+            for (int j = 0; j < 64; ++j) {
+                HISTORY_TABLE[i][j] >>= 1;
+            }
+        }
+    }
 }
 
 TTEntry* TranspositionTable::probe(uint64_t key) {

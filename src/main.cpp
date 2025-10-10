@@ -133,9 +133,8 @@ bool is_game_over(const Position& pos, std::string& reason) {
     return false;
 }
 
-void print_result(const SearchResult& result) {
+void print_result(const SearchResult& result, const Position& pos) {
     // JSON
-    if (PV_LENGTH[0] > MAX_PLY) PV_LENGTH[0] = 0;
     std::cout << "{\"best_move\":\"" << result.best_move_uci << "\",\"pv\":" << result.pv_json
               << ",\"score_cp\":" << result.score_cp << ",\"win_prob\":" << result.win_prob
               << ",\"win_prob_stddev\":" << result.win_prob_stddev
@@ -143,14 +142,15 @@ void print_result(const SearchResult& result) {
               << ",\"time_ms\":" << result.time_ms << "}" << std::endl;
 
     // Human summary
-    if (PV_LENGTH[0] > MAX_PLY) PV_LENGTH[0] = 0;
+    Move move = get_move_from_uci(std::string(result.best_move_uci), pos);
+    std::string san = move.to_san_string(pos);
     std::string source = "ENGINE";
     if (result.info_flags & BOOK) source = "BOOK";
     else if (result.info_flags & TB) source = "TB";
     else if (result.info_flags & CACHE) source = "CACHE";
-    else if (result.info_flags & MC_TIEBREAK) source = "MC";
+    else if (result.info_flags & MC_TIEBREAK) source = "MC_TIEBREAK";
 
-    std::cout << "Recommended: " << result.best_move_uci << "  Score: " << result.score_cp
+    std::cout << "Recommended: " << san << " (" << result.best_move_uci << ")  Score: " << result.score_cp
               << "  WinProb: " << (result.win_prob * 100) << "%  Depth: " << (int)result.depth
               << "  Time: " << result.time_ms << "ms  Source: " << source << std::endl;
 }
@@ -374,7 +374,7 @@ void cli_loop() {
                     result.nodes = 0;
                     result.time_ms = 0;
                     result.info_flags = BOOK;
-                    print_result(result);
+                    print_result(result, pos);
                     pos.make_move(book_move);
                     book_used = true;
                 }
@@ -488,23 +488,15 @@ void cli_loop() {
             continue;
         }
         if (line.substr(0, 9) == "set time ") {
-            try {
-                time_ms = std::stoi(line.substr(9));
-                std::cout << "Time set to " << time_ms << "ms." << std::endl;
-            } catch (...) {
-                std::cout << "Invalid time." << std::endl;
-            }
+            time_ms = std::atoi(line.substr(9).c_str());
+            std::cout << "Time set to " << time_ms << "ms." << std::endl;
             continue;
         }
         if (line.substr(0, 7) == "set tt ") {
-            try {
-                int tt_mb = std::stoi(line.substr(7));
-                OPTIONS.tt_size_mb = tt_mb;
-                TT.resize(tt_mb);
-                std::cout << "TT size set to " << tt_mb << "MB." << std::endl;
-            } catch (...) {
-                std::cout << "Invalid TT size." << std::endl;
-            }
+            int tt_mb = std::atoi(line.substr(7).c_str());
+            OPTIONS.tt_size_mb = tt_mb;
+            TT.resize(tt_mb);
+            std::cout << "TT size set to " << tt_mb << "MB." << std::endl;
             continue;
         }
 

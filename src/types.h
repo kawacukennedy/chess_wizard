@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+// Forward declarations
+class Position;
+
 // Square representation (0-63)
 enum Square : int8_t {
     A1, B1, C1, D1, E1, F1, G1, H1,
@@ -80,6 +83,7 @@ public:
     bool operator!=(const Move& other) const { return value != other.value; }
 
     std::string to_uci_string() const;
+    std::string to_san_string(const Position& pos) const;
 };
 
 using MoveList = std::vector<Move>;

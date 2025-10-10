@@ -31,6 +31,17 @@ const double WIN_PROB_OFFSET = 0.0;
 // --- Mate Score ---
 const int MATE_VALUE = 1000000;
 
+// --- Move Ordering Constants ---
+const int TT_HINT = 1000000;
+const int CAP_BASE = 100000;
+const int MVV_MULT = 10;
+const int SEE_WIN_BONUS = 500;
+const int SEE_LOSE_PENALTY = -1200;
+const int PROM_BASE = 90000;
+const int KILLER1 = 8000;
+const int KILLER2 = 7000;
+const int HISTORY_MAX = 1 << 28;
+
 // --- PV Table ---
 Move PV_TABLE[MAX_PLY + 1][MAX_PLY + 1];
 int PV_LENGTH[MAX_PLY + 1];
@@ -53,10 +64,12 @@ std::chrono::steady_clock::time_point start_time;
 // --- Monte Carlo Rollout ---
 std::tuple<int, int, int> rollout(Position pos, int max_depth) {
     int ply = 0;
+    Move moves[256];
+    int num_moves = 0;
     while (ply < max_depth) {
-        MoveList moves;
-        generate_moves(pos, moves);
-        if (moves.empty()) {
+        num_moves = 0;
+        generate_moves(pos, moves, num_moves);
+        if (num_moves == 0) {
             if (pos.is_check()) {
                 return {pos.side_to_move == BLACK ? 1 : 0, pos.side_to_move == WHITE ? 1 : 0, 0};
             } else {
@@ -64,29 +77,33 @@ std::tuple<int, int, int> rollout(Position pos, int max_depth) {
             }
         }
         // NNUE-based policy: softmax over evaluation scores
-        std::vector<int> evals;
-        for (auto m : moves) {
+        int evals[256];
+        for (int i = 0; i < num_moves; ++i) {
+            Move m = moves[i];
             if (pos.make_move(m)) {
                 int eval = evaluate(pos);
                 pos.unmake_move(m);
-                evals.push_back(eval);
+                evals[i] = eval;
             } else {
-                evals.push_back(-MATE_VALUE);
+                evals[i] = -MATE_VALUE;
             }
         }
-        int max_eval = *std::max_element(evals.begin(), evals.end());
-        std::vector<double> probs;
+        int max_eval = evals[0];
+        for (int i = 1; i < num_moves; ++i) {
+            if (evals[i] > max_eval) max_eval = evals[i];
+        }
+        double probs[256];
         double sum = 0.0;
-        for (int e : evals) {
-            double prob = exp((e - max_eval) / 100.0); // temperature 100 cp
-            probs.push_back(prob);
+        for (int i = 0; i < num_moves; ++i) {
+            double prob = exp((evals[i] - max_eval) / 100.0); // temperature 100 cp
+            probs[i] = prob;
             sum += prob;
         }
-        for (double& p : probs) p /= sum;
+        for (int i = 0; i < num_moves; ++i) probs[i] /= sum;
         double r = (double)rand() / RAND_MAX;
         double cum = 0.0;
         int idx = 0;
-        for (int i = 0; i < probs.size(); ++i) {
+        for (int i = 0; i < num_moves; ++i) {
             cum += probs[i];
             if (r <= cum) {
                 idx = i;
@@ -415,7 +432,7 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             if (!move.is_capture()) {
                 KILLER_MOVES[ply][1] = KILLER_MOVES[ply][0];
                 KILLER_MOVES[ply][0] = move;
-                HISTORY_TABLE[move.moving_piece()][move.to()] += depth * depth;
+                HISTORY_TABLE[move.moving_piece()][move.to()] = std::min(HISTORY_TABLE[move.moving_piece()][move.to()] + depth * depth * 8, HISTORY_MAX);
             }
             return beta;
         }
@@ -615,41 +632,38 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
         mean /= depth_scores.size();
         for (int s : depth_scores) stddev_cp += (s - mean) * (s - mean);
         stddev_cp = sqrt(stddev_cp / (depth_scores.size() - 1));
-    }
-    result.win_prob_stddev = stddev_cp * WIN_PROB_K / 100.0;
-
-    // Move validation: verify best_move is in root legal moves
-    if (PV_LENGTH[0] > 0) {
-        MoveList legal_moves;
-        generate_legal_moves(pos, legal_moves);
-        bool is_legal = false;
-        for (const auto& m : legal_moves) {
-            if (m == PV_TABLE[0][0]) {
-                is_legal = true;
-                break;
-            }
-        }
-        if (!is_legal) {
-            // Fallback to highest-scoring legal move
-            if (!legal_moves.empty()) {
-                // Simple: take first legal move
-                Move fallback = legal_moves[0];
-                strncpy(result.best_move_uci, fallback.to_uci_string().c_str(), 7);
-                free(result.pv_json);
-                std::string json = "[\"" + fallback.to_uci_string() + "\"]";
-                result.pv_json = (char*)malloc(json.size() + 1);
-                strcpy(result.pv_json, json.c_str());
-            }
-        }
+        result.win_prob_stddev = sigmoid_win_prob(score + stddev_cp) - sigmoid_win_prob(score - stddev_cp);
     }
 
-    result.info_flags = 0;
+    // Monte Carlo tie-break
+    std::sort(last_moves_scores.begin(), last_moves_scores.end(), [](const auto& a, const auto& b) {
+        return a.second > b.second;
+    });
+    if (last_moves_scores.size() >= 2 && abs(last_moves_scores[0].second - last_moves_scores[1].second) <= 20) {
+        // Run rollouts for top 2 moves
+        Position temp_pos = pos;
+        temp_pos.make_move(last_moves_scores[0].first);
+        auto [w1, l1, d1] = rollout(temp_pos, 40);
+        double wr1 = (w1 + 0.5 * d1) / (w1 + l1 + d1 + 1e-9); // avoid div0
 
-    // Resignation logic
-    if (result.depth >= 12 && result.nodes >= 200000 && result.win_prob <= opts->resign_threshold && !(result.info_flags & TB)) {
-        result.info_flags |= RESIGN;
-        // Optionally, set best_move_uci to empty to indicate resignation
-        result.best_move_uci[0] = '\0';
+        temp_pos = pos;
+        temp_pos.make_move(last_moves_scores[1].first);
+        auto [w2, l2, d2] = rollout(temp_pos, 40);
+        double wr2 = (w2 + 0.5 * d2) / (w2 + l2 + d2 + 1e-9);
+
+        if (wr2 > wr1) {
+            // Choose the second move
+            std::swap(last_moves_scores[0], last_moves_scores[1]);
+            std::string uci = last_moves_scores[0].first.to_uci_string();
+            strncpy(result.best_move_uci, uci.c_str(), 7);
+            std::string json = "[\"" + uci + "\"]";
+            free(result.pv_json); // free previous
+            result.pv_json = (char*)malloc(json.size() + 1);
+            strcpy(result.pv_json, json.c_str());
+            result.score_cp = last_moves_scores[0].second;
+            result.win_prob = sigmoid_win_prob(result.score_cp);
+        }
+        result.info_flags |= MC_TIEBREAK;
     }
 
     return result;
