@@ -8,8 +8,14 @@ from ctypes import *
 import chess
 
 # Load the shared library
-lib_path = os.path.join(os.path.dirname(__file__), 'build', 'libchesswizard_shared.so')
-if not os.path.exists(lib_path):
+lib_names = ['libchesswizard_shared.so', 'libchesswizard_shared.dylib', 'liblibchesswizard_shared.dylib']
+lib_path = None
+for name in lib_names:
+    candidate = os.path.join(os.path.dirname(__file__), name)
+    if os.path.exists(candidate):
+        lib_path = candidate
+        break
+if not lib_path:
     print("Error: Shared library not found. Please build the project first.")
     sys.exit(1)
 
