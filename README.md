@@ -91,10 +91,19 @@ This project uses CMake for building.
 
 Chess Wizard can be configured via command-line options or UCI setoption commands:
 
-- **NNUE Path:** Specify the path to the NNUE evaluation file using `--nnue-path <path>` or `setoption name EvalFile value <path>`.
-- **Syzygy Path:** Set the directory containing Syzygy tablebase files with `--syzygy-path <path>` or `setoption name SyzygyPath value <path>`.
-- **Opening Book:** Provide a Polyglot book file via `--book-path <path>` or `setoption name BookFile value <path>`.
-- **Resignation Threshold:** Adjust the win probability threshold for automatic resignation with `--resign-threshold <float>` (default: 0.05).
+- **NNUE Path:** Specify the path to the NNUE evaluation file using `--nnue <path>` or `setoption name NNUE_File value <path>`.
+- **Syzygy Path:** Set the directory containing Syzygy tablebase files with `--tb <path>` or `setoption name SyzygyPath value <path>`.
+- **Opening Book:** Provide a Polyglot book file via `--book <path>` or `setoption name Book value <path>`.
+- **TT Size:** Set transposition table size in MB with `--tt <MB>` or `setoption name TT Size value <MB>`.
+- **Seed:** Set random seed for deterministic results with `--seed <uint64>`.
+
+### Assets
+
+- Sample NNUE file: `nnue.bin` (768 input, 256 hidden, quantized int16 weights)
+- Sample opening book: `book.bin` (Polyglot format)
+- Syzygy tablebases: Download from online sources (e.g., Lichess tablebases)
+
+For calibration, use `tools/calibrate.py` with a dataset of (cp, outcome) pairs.
 
 ## Usage
 
@@ -135,12 +144,22 @@ echo "position startpos moves e2e4 e7e5" | ./chess_wizard
 echo "go" | ./chess_wizard
 ```
 
+## Tools
+
+The `tools/` directory contains utility scripts for engine development and tuning:
+
+- **calibrate.py:** Calibrates win probability sigmoid parameters using LBFGS optimization on (cp, outcome) datasets. Outputs `calib.json`.
+- **nnue_convert.py:** Converts floating-point NNUE weights to quantized int16 format for the binary file.
+- **book_converter.py:** Converts PGN/EPD files to Polyglot .bin opening book format.
+- **generate_magic.py:** Generates magic bitboard constants for sliding piece attacks.
+
 ## Testing
 
 Chess Wizard includes comprehensive tests to ensure correctness and performance:
 
 - **Unit Tests:** Run with `./chess_wizard --test`. Tests include Zobrist key invariance and NNUE evaluation parity.
 - **Integration Tests:** Run with `./chess_wizard --integration-test`. Verifies perft (move count) up to depth 6 for correctness.
+- **No Heap Allocation Test:** Verified by code review and testing harness to ensure no malloc/new in search/quiescence.
 
 All tests must pass before contributions are accepted.
 

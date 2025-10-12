@@ -1,7 +1,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include "position.h"
+#include "board.h"
 #include "search.h"
 
 struct ChessWizardOptions; // Forward declaration

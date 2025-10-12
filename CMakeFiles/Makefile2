@@ -91,12 +91,12 @@ clean: CMakeFiles/libchesswizard_shared.dir/clean
 CMakeFiles/chess_wizard.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 "Built target chess_wizard"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 "Built target chess_wizard"
 .PHONY : CMakeFiles/chess_wizard.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/chess_wizard.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 15
+	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 16
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/chess_wizard.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 0
 .PHONY : CMakeFiles/chess_wizard.dir/rule
@@ -108,7 +108,7 @@ chess_wizard: CMakeFiles/chess_wizard.dir/rule
 # codegen rule for target.
 CMakeFiles/chess_wizard.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 "Finished codegen for target chess_wizard"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 "Finished codegen for target chess_wizard"
 .PHONY : CMakeFiles/chess_wizard.dir/codegen
 
 # clean rule for target.
@@ -123,12 +123,12 @@ CMakeFiles/chess_wizard.dir/clean:
 CMakeFiles/libchesswizard.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 "Built target libchesswizard"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 "Built target libchesswizard"
 .PHONY : CMakeFiles/libchesswizard.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/libchesswizard.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 15
+	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 16
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/libchesswizard.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 0
 .PHONY : CMakeFiles/libchesswizard.dir/rule
@@ -140,7 +140,7 @@ libchesswizard: CMakeFiles/libchesswizard.dir/rule
 # codegen rule for target.
 CMakeFiles/libchesswizard.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 "Finished codegen for target libchesswizard"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 "Finished codegen for target libchesswizard"
 .PHONY : CMakeFiles/libchesswizard.dir/codegen
 
 # clean rule for target.
@@ -155,12 +155,12 @@ CMakeFiles/libchesswizard.dir/clean:
 CMakeFiles/libchesswizard_shared.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=31,32,33,34,35,36,37,38,39,40,41,42,43,44,45 "Built target libchesswizard_shared"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48 "Built target libchesswizard_shared"
 .PHONY : CMakeFiles/libchesswizard_shared.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/libchesswizard_shared.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 15
+	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 16
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/libchesswizard_shared.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Volumes/RCA/algo/CMakeFiles 0
 .PHONY : CMakeFiles/libchesswizard_shared.dir/rule
@@ -172,7 +172,7 @@ libchesswizard_shared: CMakeFiles/libchesswizard_shared.dir/rule
 # codegen rule for target.
 CMakeFiles/libchesswizard_shared.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=31,32,33,34,35,36,37,38,39,40,41,42,43,44,45 "Finished codegen for target libchesswizard_shared"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48 "Finished codegen for target libchesswizard_shared"
 .PHONY : CMakeFiles/libchesswizard_shared.dir/codegen
 
 # clean rule for target.

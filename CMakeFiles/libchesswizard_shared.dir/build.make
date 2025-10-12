@@ -72,10 +72,24 @@ include CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/codegen:
 .PHONY : CMakeFiles/libchesswizard_shared.dir/codegen
 
+CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
+CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o: src/api.cpp
+CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o -c /Volumes/RCA/algo/src/api.cpp
+
+CMakeFiles/libchesswizard_shared.dir/src/api.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/libchesswizard_shared.dir/src/api.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Volumes/RCA/algo/src/api.cpp > CMakeFiles/libchesswizard_shared.dir/src/api.cpp.i
+
+CMakeFiles/libchesswizard_shared.dir/src/api.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/api.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/api.cpp -o CMakeFiles/libchesswizard_shared.dir/src/api.cpp.s
+
 CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o: src/attack.cpp
 CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o -c /Volumes/RCA/algo/src/attack.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.i: cmake_force
@@ -89,7 +103,7 @@ CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o: src/bitboard.cpp
 CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o -c /Volumes/RCA/algo/src/bitboard.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.i: cmake_force
@@ -103,7 +117,7 @@ CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o: src/book.cpp
 CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o -c /Volumes/RCA/algo/src/book.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/book.cpp.i: cmake_force
@@ -117,7 +131,7 @@ CMakeFiles/libchesswizard_shared.dir/src/book.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o: src/engine.cpp
 CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.o -c /Volumes/RCA/algo/src/engine.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.i: cmake_force
@@ -131,7 +145,7 @@ CMakeFiles/libchesswizard_shared.dir/src/engine.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o: src/evaluate.cpp
 CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.o -c /Volumes/RCA/algo/src/evaluate.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.i: cmake_force
@@ -145,7 +159,7 @@ CMakeFiles/libchesswizard_shared.dir/src/evaluate.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o: src/main.cpp
 CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/main.cpp.o -c /Volumes/RCA/algo/src/main.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/main.cpp.i: cmake_force
@@ -159,7 +173,7 @@ CMakeFiles/libchesswizard_shared.dir/src/main.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o: src/move.cpp
 CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o -c /Volumes/RCA/algo/src/move.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/move.cpp.i: cmake_force
@@ -173,7 +187,7 @@ CMakeFiles/libchesswizard_shared.dir/src/move.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o: src/movegen.cpp
 CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o -c /Volumes/RCA/algo/src/movegen.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.i: cmake_force
@@ -187,7 +201,7 @@ CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o: src/nnue.cpp
 CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o -c /Volumes/RCA/algo/src/nnue.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.i: cmake_force
@@ -198,24 +212,24 @@ CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/nnue.cpp -o CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.s
 
-CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
-CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o: src/position.cpp
-CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o -c /Volumes/RCA/algo/src/position.cpp
+CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
+CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o: src/board.cpp
+CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o -c /Volumes/RCA/algo/src/board.cpp
 
-CMakeFiles/libchesswizard_shared.dir/src/position.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/libchesswizard_shared.dir/src/position.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Volumes/RCA/algo/src/position.cpp > CMakeFiles/libchesswizard_shared.dir/src/position.cpp.i
+CMakeFiles/libchesswizard_shared.dir/src/board.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/libchesswizard_shared.dir/src/board.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Volumes/RCA/algo/src/board.cpp > CMakeFiles/libchesswizard_shared.dir/src/board.cpp.i
 
-CMakeFiles/libchesswizard_shared.dir/src/position.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/position.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/position.cpp -o CMakeFiles/libchesswizard_shared.dir/src/position.cpp.s
+CMakeFiles/libchesswizard_shared.dir/src/board.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/board.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/board.cpp -o CMakeFiles/libchesswizard_shared.dir/src/board.cpp.s
 
 CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o: src/search.cpp
 CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o -c /Volumes/RCA/algo/src/search.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/search.cpp.i: cmake_force
@@ -226,24 +240,24 @@ CMakeFiles/libchesswizard_shared.dir/src/search.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/search.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/search.cpp -o CMakeFiles/libchesswizard_shared.dir/src/search.cpp.s
 
-CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
-CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o: src/syzygy.cpp
-CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o -c /Volumes/RCA/algo/src/syzygy.cpp
+CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
+CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o: src/tb_probe.cpp
+CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o -c /Volumes/RCA/algo/src/tb_probe.cpp
 
-CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Volumes/RCA/algo/src/syzygy.cpp > CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.i
+CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Volumes/RCA/algo/src/tb_probe.cpp > CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.i
 
-CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/syzygy.cpp -o CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.s
+CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Volumes/RCA/algo/src/tb_probe.cpp -o CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.s
 
 CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o: src/tt.cpp
 CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o -c /Volumes/RCA/algo/src/tt.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.i: cmake_force
@@ -257,7 +271,7 @@ CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.s: cmake_force
 CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o: CMakeFiles/libchesswizard_shared.dir/flags.make
 CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o: src/zobrist.cpp
 CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o: CMakeFiles/libchesswizard_shared.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o -MF CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o.d -o CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o -c /Volumes/RCA/algo/src/zobrist.cpp
 
 CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.i: cmake_force
@@ -270,6 +284,7 @@ CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.s: cmake_force
 
 # Object files for target libchesswizard_shared
 libchesswizard_shared_OBJECTS = \
+"CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o" \
@@ -279,15 +294,16 @@ libchesswizard_shared_OBJECTS = \
 "CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o" \
-"CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o" \
+"CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o" \
-"CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o" \
+"CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o" \
 "CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o"
 
 # External object files for target libchesswizard_shared
 libchesswizard_shared_EXTERNAL_OBJECTS =
 
+liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/attack.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/book.cpp.o
@@ -297,14 +313,14 @@ liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/main.cp
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/move.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/movegen.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.o
-liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o
+liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/search.cpp.o
-liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o
+liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/tt.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/src/zobrist.cpp.o
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/build.make
 liblibchesswizard_shared.dylib: CMakeFiles/libchesswizard_shared.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Linking CXX shared library liblibchesswizard_shared.dylib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Volumes/RCA/algo/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Linking CXX shared library liblibchesswizard_shared.dylib"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/libchesswizard_shared.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

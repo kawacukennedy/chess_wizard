@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 project(ChessWizard CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -32,12 +32,30 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE ${RELEASE_FLAGS})
 
 # Debug flags for sanity checking
-set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -DDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -fsanitize=address,undefined -DDEBUG")
 
 # --- Source Files ---
 
 # Use glob to automatically find all .cpp files in src
 file(GLOB SOURCE_FILES "src/*.cpp")
+# Explicitly list to ensure order
+set(SOURCE_FILES
+    src/api.cpp
+    src/attack.cpp
+    src/bitboard.cpp
+    src/book.cpp
+    src/engine.cpp
+    src/evaluate.cpp
+    src/main.cpp
+    src/move.cpp
+    src/movegen.cpp
+    src/nnue.cpp
+    src/board.cpp
+    src/search.cpp
+    src/tb_probe.cpp
+    src/tt.cpp
+    src/zobrist.cpp
+)
 
 # --- Targets as per Specification ---
 

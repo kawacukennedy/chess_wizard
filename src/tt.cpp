@@ -52,16 +52,16 @@ void TranspositionTable::store(uint64_t key, uint32_t move, int32_t score, int8_
     if (!table) return;
     TTEntry* entry = &table[key % num_entries];
 
-    // Replacement policy: Prefer deeper; if tie use age; tie-break deterministic
+    // Replacement policy: Prefer deeper; if equal prefer younger age; tie-break deterministic
     bool replace = false;
     if (entry->key == 0) {
         replace = true; // Empty entry
     } else if (depth > entry->depth) {
         replace = true; // Deeper
     } else if (depth == entry->depth) {
-        if (entry->age != current_age) {
-            replace = true; // Age tie
-        } else {
+        if (current_age > entry->age) {
+            replace = true; // Younger age
+        } else if (current_age == entry->age) {
             // Tie-break: ((new.key ^ old.key) & 0xFFFFFFFF) < ((old.key ^ new.key) & 0xFFFFFFFF)
             uint32_t new_xor = (key ^ entry->key) & 0xFFFFFFFF;
             uint32_t old_xor = (entry->key ^ key) & 0xFFFFFFFF;

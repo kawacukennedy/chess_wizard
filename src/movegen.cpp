@@ -1,5 +1,5 @@
 #include "movegen.h"
-#include "position.h"
+#include "board.h"
 #include "attack.h"
 #include "move.h"
 #include <iostream>
@@ -8,8 +8,8 @@ void generate_pawn_moves(const Position& pos, Move* captures, int& num_captures,
     Color us = pos.side_to_move;
     Color them = (us == WHITE) ? BLACK : WHITE;
     Bitboard our_pawns = pos.piece_bitboards[us == WHITE ? WP : BP];
-    Bitboard their_pieces = pos.occupancy_bitboards[them];
-    Bitboard all_pieces = pos.occupancy_bitboards[BOTH];
+    Bitboard their_pieces = (them == WHITE ? pos.occWhite : pos.occBlack);
+    Bitboard all_pieces = pos.occAll;
 
     int push_offset = (us == WHITE) ? 8 : -8;
     int dbl_push_offset = (us == WHITE) ? 16 : -16;
@@ -75,8 +75,8 @@ template<PieceType Pt>
 void generate_piece_moves(const Position& pos, Move* captures, int& num_captures, Move* quiets, int& num_quiets, bool captures_only) {
     Color us = pos.side_to_move;
     Bitboard our_pieces = pos.piece_bitboards[Pt];
-    Bitboard their_pieces = pos.occupancy_bitboards[us == WHITE ? BLACK : WHITE];
-    Bitboard all_pieces = pos.occupancy_bitboards[BOTH];
+    Bitboard their_pieces = (us == WHITE ? pos.occBlack : pos.occWhite);
+    Bitboard all_pieces = pos.occAll;
 
     while (our_pieces) {
         Square from = pop_bit(our_pieces);
@@ -102,17 +102,17 @@ void generate_castling_moves(const Position& pos, Move* quiets, int& num_quiets)
 
     if (us == WHITE) {
         if ((pos.castling_rights & WHITE_KINGSIDE) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], F1) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], G1) &&
+            !get_bit(pos.occAll, F1) &&
+            !get_bit(pos.occAll, G1) &&
             !pos.is_square_attacked(E1, BLACK) &&
             !pos.is_square_attacked(F1, BLACK) &&
             !pos.is_square_attacked(G1, BLACK)) {
             quiets[num_quiets++] = create_move(E1, G1, WK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
         if ((pos.castling_rights & WHITE_QUEENSIDE) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], D1) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], C1) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], B1) &&
+            !get_bit(pos.occAll, D1) &&
+            !get_bit(pos.occAll, C1) &&
+            !get_bit(pos.occAll, B1) &&
             !pos.is_square_attacked(E1, BLACK) &&
             !pos.is_square_attacked(D1, BLACK) &&
             !pos.is_square_attacked(C1, BLACK)) {
@@ -120,17 +120,17 @@ void generate_castling_moves(const Position& pos, Move* quiets, int& num_quiets)
         }
     } else { // BLACK
         if ((pos.castling_rights & BLACK_KINGSIDE) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], F8) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], G8) &&
+            !get_bit(pos.occAll, F8) &&
+            !get_bit(pos.occAll, G8) &&
             !pos.is_square_attacked(E8, WHITE) &&
             !pos.is_square_attacked(F8, WHITE) &&
             !pos.is_square_attacked(G8, WHITE)) {
             quiets[num_quiets++] = create_move(E8, G8, BK, NO_PIECE, Move::NO_PROMOTION, Move::CASTLING);
         }
         if ((pos.castling_rights & BLACK_QUEENSIDE) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], D8) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], C8) &&
-            !get_bit(pos.occupancy_bitboards[BOTH], B8) &&
+            !get_bit(pos.occAll, D8) &&
+            !get_bit(pos.occAll, C8) &&
+            !get_bit(pos.occAll, B8) &&
             !pos.is_square_attacked(E8, WHITE) &&
             !pos.is_square_attacked(D8, WHITE) &&
             !pos.is_square_attacked(C8, WHITE)) {

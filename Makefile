@@ -155,6 +155,36 @@ libchesswizard_shared/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/build
 .PHONY : libchesswizard_shared/fast
 
+src/api.o: src/api.cpp.o
+.PHONY : src/api.o
+
+# target to build an object file
+src/api.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/api.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/api.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/api.cpp.o
+.PHONY : src/api.cpp.o
+
+src/api.i: src/api.cpp.i
+.PHONY : src/api.i
+
+# target to preprocess a source file
+src/api.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/api.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/api.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/api.cpp.i
+.PHONY : src/api.cpp.i
+
+src/api.s: src/api.cpp.s
+.PHONY : src/api.s
+
+# target to generate assembly for a file
+src/api.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/api.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/api.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/api.cpp.s
+.PHONY : src/api.cpp.s
+
 src/attack.o: src/attack.cpp.o
 .PHONY : src/attack.o
 
@@ -214,6 +244,36 @@ src/bitboard.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/bitboard.cpp.s
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/bitboard.cpp.s
 .PHONY : src/bitboard.cpp.s
+
+src/board.o: src/board.cpp.o
+.PHONY : src/board.o
+
+# target to build an object file
+src/board.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/board.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/board.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/board.cpp.o
+.PHONY : src/board.cpp.o
+
+src/board.i: src/board.cpp.i
+.PHONY : src/board.i
+
+# target to preprocess a source file
+src/board.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/board.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/board.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/board.cpp.i
+.PHONY : src/board.cpp.i
+
+src/board.s: src/board.cpp.s
+.PHONY : src/board.s
+
+# target to generate assembly for a file
+src/board.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/board.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/board.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/board.cpp.s
+.PHONY : src/board.cpp.s
 
 src/book.o: src/book.cpp.o
 .PHONY : src/book.o
@@ -425,36 +485,6 @@ src/nnue.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/nnue.cpp.s
 .PHONY : src/nnue.cpp.s
 
-src/position.o: src/position.cpp.o
-.PHONY : src/position.o
-
-# target to build an object file
-src/position.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/position.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/position.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/position.cpp.o
-.PHONY : src/position.cpp.o
-
-src/position.i: src/position.cpp.i
-.PHONY : src/position.i
-
-# target to preprocess a source file
-src/position.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/position.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/position.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/position.cpp.i
-.PHONY : src/position.cpp.i
-
-src/position.s: src/position.cpp.s
-.PHONY : src/position.s
-
-# target to generate assembly for a file
-src/position.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/position.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/position.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/position.cpp.s
-.PHONY : src/position.cpp.s
-
 src/search.o: src/search.cpp.o
 .PHONY : src/search.o
 
@@ -485,35 +515,35 @@ src/search.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/search.cpp.s
 .PHONY : src/search.cpp.s
 
-src/syzygy.o: src/syzygy.cpp.o
-.PHONY : src/syzygy.o
+src/tb_probe.o: src/tb_probe.cpp.o
+.PHONY : src/tb_probe.o
 
 # target to build an object file
-src/syzygy.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/syzygy.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/syzygy.cpp.o
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.o
-.PHONY : src/syzygy.cpp.o
+src/tb_probe.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/tb_probe.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/tb_probe.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.o
+.PHONY : src/tb_probe.cpp.o
 
-src/syzygy.i: src/syzygy.cpp.i
-.PHONY : src/syzygy.i
+src/tb_probe.i: src/tb_probe.cpp.i
+.PHONY : src/tb_probe.i
 
 # target to preprocess a source file
-src/syzygy.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/syzygy.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/syzygy.cpp.i
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.i
-.PHONY : src/syzygy.cpp.i
+src/tb_probe.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/tb_probe.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/tb_probe.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.i
+.PHONY : src/tb_probe.cpp.i
 
-src/syzygy.s: src/syzygy.cpp.s
-.PHONY : src/syzygy.s
+src/tb_probe.s: src/tb_probe.cpp.s
+.PHONY : src/tb_probe.s
 
 # target to generate assembly for a file
-src/syzygy.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/syzygy.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/syzygy.cpp.s
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/syzygy.cpp.s
-.PHONY : src/syzygy.cpp.s
+src/tb_probe.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/chess_wizard.dir/build.make CMakeFiles/chess_wizard.dir/src/tb_probe.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard.dir/build.make CMakeFiles/libchesswizard.dir/src/tb_probe.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/libchesswizard_shared.dir/build.make CMakeFiles/libchesswizard_shared.dir/src/tb_probe.cpp.s
+.PHONY : src/tb_probe.cpp.s
 
 src/tt.o: src/tt.cpp.o
 .PHONY : src/tt.o
@@ -586,12 +616,18 @@ help:
 	@echo "... chess_wizard"
 	@echo "... libchesswizard"
 	@echo "... libchesswizard_shared"
+	@echo "... src/api.o"
+	@echo "... src/api.i"
+	@echo "... src/api.s"
 	@echo "... src/attack.o"
 	@echo "... src/attack.i"
 	@echo "... src/attack.s"
 	@echo "... src/bitboard.o"
 	@echo "... src/bitboard.i"
 	@echo "... src/bitboard.s"
+	@echo "... src/board.o"
+	@echo "... src/board.i"
+	@echo "... src/board.s"
 	@echo "... src/book.o"
 	@echo "... src/book.i"
 	@echo "... src/book.s"
@@ -613,15 +649,12 @@ help:
 	@echo "... src/nnue.o"
 	@echo "... src/nnue.i"
 	@echo "... src/nnue.s"
-	@echo "... src/position.o"
-	@echo "... src/position.i"
-	@echo "... src/position.s"
 	@echo "... src/search.o"
 	@echo "... src/search.i"
 	@echo "... src/search.s"
-	@echo "... src/syzygy.o"
-	@echo "... src/syzygy.i"
-	@echo "... src/syzygy.s"
+	@echo "... src/tb_probe.o"
+	@echo "... src/tb_probe.i"
+	@echo "... src/tb_probe.s"
 	@echo "... src/tt.o"
 	@echo "... src/tt.i"
 	@echo "... src/tt.s"

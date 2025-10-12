@@ -876,4 +876,5 @@ CMakeFiles/chess_wizard.dir/src/evaluate.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_fsfilcnt_t.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_types/_nl_item.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/cstdarg \
-  /Volumes/RCA/algo/src/bitboard.h /Volumes/RCA/algo/src/nnue.h
+  /Volumes/RCA/algo/src/bitboard.h /Volumes/RCA/algo/src/nnue.h \
+  /Volumes/RCA/algo/src/attack.h

@@ -1,6 +1,6 @@
 #include "engine.h"
 #include "search.h"
-#include "position.h"
+#include "board.h"
 #include "movegen.h"
 #include "evaluate.h"
 #include "tt.h"
@@ -9,7 +9,7 @@
 #include "types.h"
 #include "attack.h"
 #include "book.h"
-#include "syzygy.h"
+#include "tb_probe.h"
 #include "zobrist.h"
 #include <iostream>
 #include <algorithm>
@@ -41,18 +41,8 @@ std::string BOOK_PATH_BUFFER;
 
 void init_all() {
     init_attacks();
-    init_zobrist_keys();
-    TT.resize(OPTIONS.tt_size_mb);
+    // init_zobrist_keys called separately with seed
+    TT.resize(32); // default
 }
 
-// --- C-API Implementation ---
-extern "C" SearchResult chess_wizard_suggest_move(const char* fen_or_moves, uint32_t max_time_ms, uint8_t max_depth, const ChessWizardOptions* opts) {
-    Position pos;
-    pos.set_from_fen(std::string(fen_or_moves));
 
-    SearchLimits limits;
-    limits.movetime = max_time_ms;
-    limits.max_depth = max_depth;
-
-    return search_position(pos, limits, opts);
-}

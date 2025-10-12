@@ -18,31 +18,25 @@ struct SplitMix64 {
     }
 };
 
-// Use a single static RNG instance seeded as per the spec
-uint64_t generate_deterministic_key() {
-    static SplitMix64 rng(0x9E3779B97F4A7C15ULL);
-    return rng.next();
-}
-
-ZobristKeys::ZobristKeys() {
+ZobristKeys::ZobristKeys(uint64_t seed) {
+    SplitMix64 rng(seed);
     for (int p = 0; p < 12; ++p) {
         for (int sq = 0; sq < 64; ++sq) {
-            piece_keys[p][sq] = generate_deterministic_key();
+            piece_keys[p][sq] = rng.next();
         }
     }
     for (int i = 0; i < 16; ++i) {
-        castling_keys[i] = generate_deterministic_key();
+        castling_keys[i] = rng.next();
     }
     // Spec: zobrist_ep_file[8]
     for (int file = 0; file < 8; ++file) {
-        en_passant_keys[file] = generate_deterministic_key();
+        en_passant_keys[file] = rng.next();
     }
-    side_to_move_key = generate_deterministic_key();
+    side_to_move_key = rng.next();
 }
 
 // This function can be called from main to ensure initialization happens.
-void init_zobrist_keys() {
-    // The global Zobrist object's constructor already handles initialization.
-    // This function can be a no-op or can be used to explicitly trigger
-    // initialization if the global object construction order is a concern.
+void init_zobrist_keys(uint64_t seed) {
+    // Reinitialize with seed
+    Zobrist = ZobristKeys(seed);
 }

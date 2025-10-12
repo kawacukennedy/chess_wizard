@@ -1,7 +1,7 @@
 #pragma once
 
 #include "types.h"
-#include "position.h"
+#include "board.h"
 #include <vector>
 
 namespace NNUE {
@@ -33,8 +33,8 @@ public:
     Evaluator();
     bool init(const char* path);
     void reset(const Position& pos);
-    void update_make(const Position& pos, Move move);
-    void update_unmake(const Position& pos, Move move);
+    void update_make(Position& pos, Move move, StateInfo& si, int ply);
+    void update_unmake(Position& pos, Move move, StateInfo& si, int ply);
     void update_make_null();
     void update_unmake_null();
     int32_t evaluate(Color us);

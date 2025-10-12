@@ -6,9 +6,9 @@
 #include "nnue.h"
 #include "types.h"
 #include "attack.h"
-#include "position.h"
+#include "board.h"
 #include "book.h"
-#include "syzygy.h"
+#include "tb_probe.h"
 #include <iostream>
 #include <algorithm>
 #include <cmath>
@@ -288,9 +288,7 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     for (int i = 0; i < num_captures; ++i) {
         Move move = captures[i];
         if (!pos.make_move(move)) continue;
-        NNUE::nnue_evaluator.update_make(pos, move);
         int score = -quiescence(-beta, -alpha, ply + 1, pos);
-        NNUE::nnue_evaluator.update_unmake(pos, move);
         pos.unmake_move(move);
 
         if (score >= beta) return beta;
@@ -355,11 +353,9 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
     }
 
     if (!in_check && do_null && depth >= 3) {
+        int R = 2 + (depth >= 6 ? 1 : 0);
         pos.make_null_move();
-        NNUE::nnue_evaluator.update_make_null();
-        int null_reduction = (depth >= 6) ? 3 : 2;
-        int null_score = -search(-beta, -beta + 1, depth - 1 - null_reduction, ply + 1, pos, false);
-        NNUE::nnue_evaluator.update_unmake_null();
+        int null_score = -search(-beta, -beta + 1, depth - 1 - R, ply + 1, pos, false);
         pos.unmake_null_move();
         if (null_score >= beta) {
             return beta;
@@ -390,7 +386,6 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
         }
 
         if (!pos.make_move(move)) continue;
-        NNUE::nnue_evaluator.update_make(pos, move);
         moves_searched++;
         int score;
         bool gives_check = pos.is_check();
@@ -416,7 +411,6 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             }
             PV_LENGTH[ply] = 1 + PV_LENGTH[ply + 1];
         }
-        NNUE::nnue_evaluator.update_unmake(pos, move);
         pos.unmake_move(move);
 
         if (score > best_score) {
@@ -481,9 +475,7 @@ std::vector<std::pair<Move, int>> get_root_moves_scores(Position& pos, int depth
     std::vector<std::pair<Move, int>> scores;
     for (const auto& move : moves) {
         if (pos.make_move(move)) {
-            NNUE::nnue_evaluator.update_make(pos, move);
             int score = -search(-MATE_VALUE, MATE_VALUE, depth - 1, 1, pos, true);
-            NNUE::nnue_evaluator.update_unmake(pos, move);
             pos.unmake_move(move);
             scores.push_back({move, score});
         }

@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/Volumes/RCA/algo/src
 
-CXX_FLAGS =  -Wall -Wextra -Wpedantic -std=c++20
+CXX_FLAGS =  -Wall -Wextra -Wpedantic -O3 -flto -funroll-loops -fomit-frame-pointer -fno-exceptions -fno-rtti -DNDEBUG -march=native -std=c++20
 

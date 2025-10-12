@@ -90,7 +90,7 @@ def clear_cache():
     cache.clear()
     cache_order.clear()
 
-def print_result(result):
+def print_result(result, board):
     # JSON
     pv_json = result.pv_json.decode('utf-8') if result.pv_json else '[]'
     json_output = {
@@ -114,7 +114,7 @@ def print_result(result):
     elif result.info_flags & 4:  # CACHE
         source = "CACHE"
     elif result.info_flags & 8:  # MC_TIEBREAK
-        source = "MC"
+        source = "MC_TIEBREAK"
 
     uci = result.best_move_uci.decode('utf-8')
     try:
@@ -123,7 +123,7 @@ def print_result(result):
         recommended = f"{san} ({uci})"
     except:
         recommended = uci
-    print(f"Recommended: {recommended}  Score: {result.score_cp}  WinProb: {result.win_prob*100:.1f}%  Depth: {result.depth}  Nodes: {result.nodes}  Time: {result.time_ms}ms  Source: {source}")
+    print(f"Recommended: {recommended}  Score: {result.score_cp}  WinProb: {result.win_prob*100:.1f}%  Depth: {result.depth}  Time: {result.time_ms}ms  Source: {source}")
 
 def normalize_fen(board):
     return board.fen().rstrip()
@@ -139,15 +139,9 @@ def suggest_move(board, time_ms=5000, max_depth=64):
     put_cached_result(fen, result)
     return result
 
-def handle_case_me(board):
-    # Check book - for now, assume no book
-    result = suggest_move(board)
-    print_result(result)
-    board.push_uci(result.best_move_uci.decode('utf-8'))
-
-def handle_case_opponent(board):
+def per_move_loop(board, time_ms):
     while True:
-        print("Enter opponent move (UCI or SAN), or type newgame/undo/quit/fen <FEN>/set time <ms>/set tt <MB>: ", end='')
+        print("Enter opponent move (UCI or SAN) or command (newgame/undo/quit): ", end='')
         line = input().strip()
         if line == 'quit':
             return False
@@ -164,6 +158,9 @@ def handle_case_opponent(board):
             else:
                 print("Cannot undo.")
             continue
+        elif line == 'fen':
+            print("fen command requires <FEN>, e.g., fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            continue
         elif line.startswith('fen '):
             try:
                 fen = line[4:].strip()
@@ -175,7 +172,6 @@ def handle_case_opponent(board):
         elif line.startswith('set time '):
             try:
                 time_ms = int(line[9:].strip())
-                # TODO: set global time
                 print(f"Time set to {time_ms}ms.")
             except:
                 print("Invalid time.")
@@ -188,46 +184,119 @@ def handle_case_opponent(board):
             except:
                 print("Invalid TT size.")
             continue
+        elif line == 'help':
+            print("Commands: newgame, undo, fen <FEN>, set time <ms>, set tt <MB>, quit, help")
+            continue
 
         try:
-            move = board.parse_san(line) if not line.isalnum() or len(line) > 4 else board.parse_uci(line)
+            # Prefer UCI if unambiguous, else SAN
+            move = None
+            try:
+                move = board.parse_uci(line)
+            except:
+                move = board.parse_san(line)
             if move in board.legal_moves:
                 board.push(move)
-                print(f"Applied move: {line}")
+                print(f"Applied opponent move: {line}")
 
-                # Check terminal
+                # Check game over
                 if board.is_checkmate():
-                    print("Checkmate! You win.")
-                    return False
+                    print("Game over — Black wins (checkmate)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.is_stalemate():
-                    print("Stalemate! Draw.")
-                    return False
+                    print("Game over — Draw (stalemate)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.is_insufficient_material():
-                    print("Insufficient material! Draw.")
-                    return False
+                    print("Game over — Draw (insufficient material)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.halfmove_clock >= 100:
-                    print("50-move rule! Draw.")
-                    return False
+                    print("Game over — Draw (50-move rule)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
 
-                result = suggest_move(board)
-                print_result(result)
+                # Suggest move
+                result = suggest_move(board, time_ms, 64)
+                print_result(result, board)
                 board.push_uci(result.best_move_uci.decode('utf-8'))
 
-                # Check terminal after engine move
+                # Check game over after engine move
                 if board.is_checkmate():
-                    print("Checkmate! Engine wins.")
-                    return False
+                    print("Game over — White wins (checkmate)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.is_stalemate():
-                    print("Stalemate! Draw.")
-                    return False
+                    print("Game over — Draw (stalemate)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.is_insufficient_material():
-                    print("Insufficient material! Draw.")
-                    return False
+                    print("Game over — Draw (insufficient material)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
                 elif board.halfmove_clock >= 100:
-                    print("50-move rule! Draw.")
-                    return False
+                    print("Game over — Draw (50-move rule)")
+                    print("New game? (yes/no): ", end='')
+                    answer = input().strip().lower()
+                    if answer in ['yes', 'y']:
+                        board.reset()
+                        clear_cache()
+                        print("New game started.")
+                        continue
+                    else:
+                        return False
             else:
-                print("Illegal move.")
+                print("Illegal move")
         except:
             print("Invalid move or command.")
 
@@ -235,7 +304,7 @@ def handle_case_opponent(board):
 
 def main():
     parser = argparse.ArgumentParser(description='Chess Wizard CLI')
-    parser.add_argument('--time', type=int, default=5000, help='Default time per move in ms')
+    parser.add_argument('--time', type=int, default=2000, help='Default time per move in ms')
     parser.add_argument('--tt', type=int, default=32, help='TT size in MB')
     parser.add_argument('--nnue', type=str, help='NNUE file path')
     parser.add_argument('--tb', type=str, help='Syzygy TB path')
@@ -244,6 +313,7 @@ def main():
 
     args = parser.parse_args()
 
+    time_ms = args.time
     options.tt_size_mb = args.tt
     options.seed = args.seed
     if args.nnue:
@@ -251,25 +321,60 @@ def main():
         options.nnue_path = args.nnue.encode('utf-8')
     if args.tb:
         options.use_syzygy = True
-        # TODO: set tb_paths
+        # For simplicity, set tb_paths to single path
+        tb_path = args.tb.encode('utf-8')
+        options.tb_paths = (c_char_p * 2)(tb_path, None)
     if args.book:
         options.book_path = args.book.encode('utf-8')
 
-    print("Chess Wizard ready. Who started the match? Type \"me\" if you started (White) or \"opponent\" if they started (Black).")
+    print("Chess Wizard ready. Who started the match? Type 'me' if you started (White) or 'opponent' if they started (Black).")
 
     while True:
-        response = input().strip().lower()
-        if response in ['me', 'white']:
-            board = chess.Board()
-            handle_case_me(board)
-            handle_case_opponent(board)
-            break
-        elif response in ['opponent', 'black']:
-            board = chess.Board()
-            if not handle_case_opponent(board):
+        response = input().strip()
+        accepted = ["me", "opponent", "white", "black", "ME", "OPPONENT", "quit", "newgame"]
+        if response in accepted:
+            if response.lower() in ['quit']:
+                return
+            elif response.lower() in ['newgame']:
+                # Restart
+                continue
+            elif response.lower() in ['me', 'white']:
+                # Case me
+                board = chess.Board()
+                # Check book
+                book_used = False
+                if options.book_path:
+                    # Assume book loaded, but since API handles it, just call suggest
+                    pass
+                result = suggest_move(board, time_ms, 64)
+                print_result(result, board)
+                board.push_uci(result.best_move_uci.decode('utf-8'))
+                per_move_loop(board, time_ms)
                 break
+            elif response.lower() in ['opponent', 'black']:
+                # Case opponent
+                board = chess.Board()
+                print("Enter opponent move (UCI or SAN): ", end='')
+                line = input().strip()
+                try:
+                    move = board.parse_uci(line) if len(line) <= 4 and line.isalnum() else board.parse_san(line)
+                    if move in board.legal_moves:
+                        board.push(move)
+                        print(f"Applied opponent move: {line}")
+                        result = suggest_move(board, time_ms, 64)
+                        print_result(result, board)
+                        board.push_uci(result.best_move_uci.decode('utf-8'))
+                        per_move_loop(board, time_ms)
+                        break
+                    else:
+                        print("Illegal move")
+                        continue
+                except:
+                    print("Invalid move")
+                    continue
         else:
-            print("Invalid input. Please type 'me' or 'opponent'.")
+            print('Invalid response — type "me" or "opponent"')
+            continue
 
 if __name__ == '__main__':
     main()

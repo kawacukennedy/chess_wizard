@@ -1,5 +1,5 @@
 #include "attack.h"
-#include "position.h"
+#include "board.h"
 #include "types.h"
 
 // --- Precomputed Attack Tables ---
@@ -155,7 +155,7 @@ int see(const Position& pos, Move move) {
     int d = 0;
     Bitboard may_xray = pos.piece_bitboards[WB] | pos.piece_bitboards[BB] | pos.piece_bitboards[WR] | pos.piece_bitboards[BR] | pos.piece_bitboards[WQ] | pos.piece_bitboards[BQ];
     Bitboard from_bb = 1ULL << from;
-    Bitboard occ = pos.occupancy_bitboards[BOTH];
+    Bitboard occ = pos.occAll;
     Bitboard attackers = 0;
 
     // Initial capture

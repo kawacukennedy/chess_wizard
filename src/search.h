@@ -1,7 +1,7 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
-#include "position.h"
+#include "board.h"
 #include "types.h"
 #include <vector>
 #include <tuple>

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <immintrin.h>
 
 namespace NNUE {
 
@@ -113,10 +114,9 @@ void Evaluator::update_feature(int feature_index, bool add) {
     }
 }
 
-void Evaluator::update_make(const Position& pos, Move move) {
+void Evaluator::update_make(Position& pos, Move move, StateInfo& si, int ply) {
     if (!initialized) return;
 
-    acc.deltas.clear();
     std::vector<int> toggled;
 
     PieceType moved_piece = move.moving_piece();
@@ -145,22 +145,48 @@ void Evaluator::update_make(const Position& pos, Move move) {
         toggled.push_back(get_feature_index(moved_piece, to));
     }
 
+    // Handle castling rook moves
+    if (move.is_castling()) {
+        if (get_piece_color(moved_piece) == WHITE) {
+            if (to == G1) {
+                toggled.push_back(get_feature_index(WR, H1));
+                toggled.push_back(get_feature_index(WR, F1));
+            } else if (to == C1) {
+                toggled.push_back(get_feature_index(WR, A1));
+                toggled.push_back(get_feature_index(WR, D1));
+            }
+        } else {
+            if (to == G8) {
+                toggled.push_back(get_feature_index(BR, H8));
+                toggled.push_back(get_feature_index(BR, F8));
+            } else if (to == C8) {
+                toggled.push_back(get_feature_index(BR, A8));
+                toggled.push_back(get_feature_index(BR, D8));
+            }
+        }
+    }
+
     // Update accumulator
     for (int f : toggled) {
         update_feature(f, true);
     }
 
-    acc.deltas = toggled;
+    // Store in position's delta buffer
+    int base = ply * 8;
+    for (size_t i = 0; i < toggled.size(); ++i) {
+        pos.nnue_delta_buffer[base + i] = toggled[i];
+    }
+    si.nnue_delta_count = toggled.size();
 }
 
-void Evaluator::update_unmake(const Position& pos, Move move) {
+void Evaluator::update_unmake(Position& pos, Move move, StateInfo& si, int ply) {
     if (!initialized) return;
 
     // Undo the updates
-    for (int f : acc.deltas) {
-        update_feature(f, false);
+    int base = ply * 8;
+    for (uint8_t i = 0; i < si.nnue_delta_count; ++i) {
+        update_feature(pos.nnue_delta_buffer[base + i], false);
     }
-    acc.deltas.clear();
 }
 
 void Evaluator::update_make_null() {
@@ -182,10 +208,28 @@ int32_t Evaluator::evaluate(Color us) {
     if (!initialized) return 0;
 
     int32_t score = net.output_bias;
+#ifdef __AVX2__
+    __m256i sum_vec = _mm256_setzero_si256();
+    for (int i = 0; i < HIDDEN_SIZE; i += 8) {
+        __m256i hidden_vec = _mm256_load_si256((__m256i*)&acc.hidden[i]);
+        // Apply ReLU: max(0, hidden)
+        __m256i zero = _mm256_setzero_si256();
+        hidden_vec = _mm256_max_epi32(hidden_vec, zero);
+        __m256i weight_vec = _mm256_load_si256((__m256i*)&net.output_weights[i]);
+        __m256i prod = _mm256_mullo_epi32(hidden_vec, weight_vec);
+        sum_vec = _mm256_add_epi32(sum_vec, prod);
+    }
+    // Horizontal sum
+    __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum_vec), _mm256_extracti128_si256(sum_vec, 1));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_SHUFFLE(2,3,0,1)));
+    sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_SHUFFLE(1,0,3,2)));
+    score += _mm_cvtsi128_si32(sum128);
+#else
     for (int i = 0; i < HIDDEN_SIZE; ++i) {
         int32_t hidden = std::max(0, acc.hidden[i]);
         score += hidden * net.output_weights[i];
     }
+#endif
 
     // Scale by 16 as per common NNUE implementations
     score /= 16;

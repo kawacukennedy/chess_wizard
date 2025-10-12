@@ -1,13 +1,29 @@
 #include "evaluate.h"
-#include "position.h"
+#include "board.h"
 #include "bitboard.h"
 #include "nnue.h"
+#include "attack.h"
 
 // --- Global flag for NNUE ---
 static bool USE_NNUE = false;
 
 void set_use_nnue(bool use_nnue) {
     USE_NNUE = use_nnue && NNUE::nnue_available;
+}
+
+// --- Helper functions ---
+inline Bitboard file_mask(int file) { return FILE_MASKS[file]; }
+
+Bitboard rank_mask_above(int rank) {
+    Bitboard mask = 0;
+    for (int r = rank + 1; r < 8; ++r) mask |= RANK_MASKS[r];
+    return mask;
+}
+
+Bitboard rank_mask_below(int rank) {
+    Bitboard mask = 0;
+    for (int r = 0; r < rank; ++r) mask |= RANK_MASKS[r];
+    return mask;
 }
 
 // --- Material Values (centipawns) ---
@@ -168,6 +184,133 @@ int get_game_phase(const Position& pos) {
     return (phase * 256 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;
 }
 
+// --- Pawn Structure Evaluation ---
+int evaluate_pawn_structure(const Position& pos, Color color) {
+    int score = 0;
+    Bitboard pawns = pos.piece_bitboards[color == WHITE ? WP : BP];
+    Bitboard enemy_pawns = pos.piece_bitboards[color == WHITE ? BP : WP];
+    Bitboard our_pawns = pawns;
+
+    while (pawns) {
+        Square sq = pop_bit(pawns);
+        int file = sq % 8;
+        int rank = sq / 8;
+        int relative_rank = color == WHITE ? rank : 7 - rank;
+
+        // Isolated pawn
+        bool isolated = true;
+        if (file > 0 && (our_pawns & file_mask(file - 1))) isolated = false;
+        if (file < 7 && (our_pawns & file_mask(file + 1))) isolated = false;
+        if (isolated) score -= 15;
+
+        // Doubled pawn
+        Bitboard file_bb = file_mask(file);
+        int pawns_on_file = popcnt(our_pawns & file_bb);
+        if (pawns_on_file > 1) score -= 25;
+
+        // Passed pawn
+        bool passed = true;
+        Bitboard blocking_squares = (color == WHITE ? rank_mask_above(rank) : rank_mask_below(rank)) & (file_mask(std::max(0, file-1)) | file_mask(file) | file_mask(std::min(7, file+1)));
+        if (enemy_pawns & blocking_squares) passed = false;
+        if (passed) {
+            score += 20 + 10 * relative_rank;
+        }
+    }
+    return score;
+}
+
+// --- King Safety Evaluation ---
+int evaluate_king_safety(const Position& pos, Color color) {
+    Square king_sq = get_king_square(pos, color);
+    int score = 0;
+
+    // Pawn shield
+    Bitboard pawn_shield = 0ULL;
+    int king_file = king_sq % 8;
+    int king_rank = king_sq / 8;
+    if (color == WHITE) {
+        if (king_rank < 7) {
+            for (int f = std::max(0, king_file - 1); f <= std::min(7, king_file + 1); ++f) {
+                pawn_shield |= (1ULL << ((king_rank + 1) * 8 + f));
+            }
+        }
+    } else {
+        if (king_rank > 0) {
+            for (int f = std::max(0, king_file - 1); f <= std::min(7, king_file + 1); ++f) {
+                pawn_shield |= (1ULL << ((king_rank - 1) * 8 + f));
+            }
+        }
+    }
+    Bitboard our_pawns = pos.piece_bitboards[color == WHITE ? WP : BP];
+    int shield_pawns = popcnt(pawn_shield & our_pawns);
+    score += shield_pawns * -20; // More pawns better (less negative)
+
+    // Attacker count
+    int attackers = 0;
+    Color enemy = color == WHITE ? BLACK : WHITE;
+    for (int pt = WN; pt <= WQ; ++pt) {
+        Bitboard pieces = pos.piece_bitboards[enemy * 6 + pt - WP];
+        while (pieces) {
+            Square sq = pop_bit(pieces);
+            if (pos.is_square_attacked(king_sq, enemy)) {
+                attackers++;
+                break; // Just count if any attack, but wait, no, count number of attackers.
+                // Actually, to count distinct attackers, but for simplicity, count pieces that attack.
+            }
+        }
+    }
+    // Since is_square_attacked is bool, I need to count how many pieces attack.
+    // Better to loop and check for each piece if it attacks king_sq.
+    attackers = 0;
+    for (int pt = WN; pt <= WQ; ++pt) {
+        Bitboard pieces = pos.piece_bitboards[enemy * 6 + pt - WP];
+        while (pieces) {
+            Square sq = pop_bit(pieces);
+            // Check if this piece attacks king_sq
+            Bitboard attacks = 0ULL;
+            switch (pt) {
+                case WN: attacks = KNIGHT_ATTACKS[sq]; break;
+                case WB: attacks = get_bishop_attacks(sq, pos.occAll); break;
+                case WR: attacks = get_rook_attacks(sq, pos.occAll); break;
+                case WQ: attacks = (get_bishop_attacks(sq, pos.occAll) | get_rook_attacks(sq, pos.occAll)); break;
+            }
+            if (attacks & (1ULL << king_sq)) attackers++;
+        }
+    }
+    // Buckets
+    const int attacker_penalty[] = {0, -10, -25, -60, -120};
+    int bucket = std::min(attackers, 4);
+    score += attacker_penalty[bucket];
+
+    return score;
+}
+
+// --- Mobility Evaluation ---
+int evaluate_mobility(const Position& pos, Color color) {
+    int score = 0;
+    const int mobility_weights[] = {0, 4, 3, 2, 1}; // P, N, B, R, Q
+
+    for (int pt = WN; pt <= WQ; ++pt) {
+        Bitboard pieces = pos.piece_bitboards[color * 6 + pt - WP];
+        while (pieces) {
+            Square sq = pop_bit(pieces);
+            int moves = 0;
+            // Count pseudo-legal moves (simplified)
+            Bitboard attacks = 0ULL;
+            switch (pt) {
+                case WN: attacks = KNIGHT_ATTACKS[sq]; break;
+                case WB: attacks = get_bishop_attacks(sq, pos.occAll); break;
+                case WR: attacks = get_rook_attacks(sq, pos.occAll); break;
+                case WQ: attacks = (get_bishop_attacks(sq, pos.occAll) | get_rook_attacks(sq, pos.occAll)); break;
+            }
+            attacks &= ~(color == WHITE ? pos.occWhite : pos.occBlack);
+            moves = popcnt(attacks);
+            score += moves * mobility_weights[pt - WN + 1];
+        }
+    }
+    return score;
+}
+
 // --- Evaluation Function ---
 int evaluate(const Position& pos) {
     if (USE_NNUE) {
@@ -198,6 +341,24 @@ int evaluate(const Position& pos) {
             }
         }
     }
+
+    // --- Pawn Structure ---
+    score_mg += evaluate_pawn_structure(pos, WHITE);
+    score_eg += evaluate_pawn_structure(pos, WHITE);
+    score_mg -= evaluate_pawn_structure(pos, BLACK);
+    score_eg -= evaluate_pawn_structure(pos, BLACK);
+
+    // --- King Safety ---
+    score_mg += evaluate_king_safety(pos, WHITE);
+    score_eg += evaluate_king_safety(pos, WHITE);
+    score_mg -= evaluate_king_safety(pos, BLACK);
+    score_eg -= evaluate_king_safety(pos, BLACK);
+
+    // --- Mobility ---
+    score_mg += evaluate_mobility(pos, WHITE);
+    score_eg += evaluate_mobility(pos, WHITE);
+    score_mg -= evaluate_mobility(pos, BLACK);
+    score_eg -= evaluate_mobility(pos, BLACK);
 
     // --- Interpolate based on game phase ---
     int final_score = ((score_mg * (256 - phase)) + (score_eg * phase)) / 256;

@@ -1,5 +1,5 @@
 #include "move.h"
-#include "position.h"
+#include "board.h"
 #include "movegen.h"
 #include <cctype>
 #include <algorithm>
