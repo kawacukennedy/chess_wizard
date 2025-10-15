@@ -3,6 +3,7 @@
 #include "attack.h"
 #include "bitboard.h"
 #include "move.h"
+#include "nnue.h"
 #include <iostream>
 #include <sstream>
 #include <cctype>
@@ -88,7 +89,16 @@ void Position::set_from_fen(const std::string& fen) {
 
     // Compute hash
     hash_key = 0;
-    // TODO: compute zobrist hash
+    for (int sq = 0; sq < 64; ++sq) {
+        PieceType pt = piece_on_square((Square)sq);
+        if (pt != NO_PIECE) {
+            hash_key ^= Zobrist.piece_keys[pt][sq];
+        }
+    }
+    if (side_to_move == BLACK) hash_key ^= Zobrist.side_to_move_key;
+    hash_key ^= Zobrist.castling_keys[castling_rights];
+    if (en_passant_sq != NO_SQUARE) hash_key ^= Zobrist.en_passant_keys[file_of(en_passant_sq)];
+    if (hash_key == 0) hash_key = 1;
 }
 
 PieceType Position::piece_on_square(Square sq) const {

@@ -204,6 +204,9 @@ void run_tests() {
     // TODO: fix with si and ply
     std::cout << "NNUE parity test skipped" << std::endl;
 
+    // Evaluate start position
+    std::cout << "Evaluate start position: " << evaluate(pos) << std::endl;
+
     std::cout << "Tests completed." << std::endl;
 }
 
@@ -324,6 +327,8 @@ void cli_loop() {
     Position pos;
     pos.set_from_fen(START_FEN);
     TT.resize(32);
+
+    TT.clear();
     int time_ms = 2000; // default
 
     std::cout << "Chess Wizard ready. Who started the match? Type 'me' if you started (White) or 'opponent' if they started (Black)." << std::endl;

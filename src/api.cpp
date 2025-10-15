@@ -45,6 +45,7 @@ extern "C" SearchResult chess_wizard_suggest_move(const char* fen, uint32_t max_
 
     // Resize TT
     TT.resize(local_opts.tt_size_mb);
+    TT.clear();
 
     // Set up position
     Position pos;

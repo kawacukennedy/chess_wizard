@@ -16,6 +16,8 @@
 #include <vector>
 #include <atomic>
 
+extern bool USE_NNUE;
+
 extern Book OPENING_BOOK;
 
 // --- Search Globals ---
@@ -262,6 +264,8 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     NodeCount++;
     if (StopSearch) return 0;
 
+    if (ply > 10) return evaluate(pos);
+
     // Draw detection
     if (is_draw(pos)) return 0;
 
@@ -276,17 +280,17 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     int& num_captures = NUM_CAPTURES[ply];
     Move* quiets = QUIETS[ply];
     int& num_quiets = NUM_QUIETS[ply];
-    generate_moves(pos, captures, num_captures, quiets, num_quiets, true);
-    Move tt_move = Move(0);
-    order_moves(captures, num_captures, quiets, 0, ply, tt_move, pos); // quiets not used in qsearch
+    bool only_captures = !in_check;
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, only_captures);
+    order_moves(captures, num_captures, quiets, num_quiets, ply, Move(0), pos);
 
-    if (num_captures == 0) {
+    if (num_captures + num_quiets == 0) {
         if (in_check) return -(MATE_VALUE - ply);
         else return stand_pat;
     }
 
-    for (int i = 0; i < num_captures; ++i) {
-        Move move = captures[i];
+    for (int i = 0; i < num_captures + num_quiets; ++i) {
+        Move move = (i < num_captures) ? captures[i] : quiets[i - num_captures];
         if (!pos.make_move(move)) continue;
         int score = -quiescence(-beta, -alpha, ply + 1, pos);
         pos.unmake_move(move);
@@ -297,106 +301,6 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
 
     return alpha;
 }
-
-// --- Main Search Function ---
-int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null) {
-    NodeCount++;
-    check_time();
-    if (StopSearch) return 0;
-
-    // Draw detection
-    if (is_draw(pos)) return 0;
-
-    PV_LENGTH[ply] = ply;
-
-    bool in_check = pos.is_check();
-    if (in_check) {
-        depth++;
-    }
-
-    if (depth <= 0) {
-        return quiescence(alpha, beta, ply, pos);
-    }
-
-    if (ply >= MAX_PLY) {
-        return evaluate(pos);
-    }
-
-    alpha = std::max(alpha, -(MATE_VALUE - ply));
-    beta = std::min(beta, MATE_VALUE - ply);
-    if (alpha >= beta) {
-        return alpha;
-    }
-
-    Move tt_move = Move(0);
-    TTEntry* tt_entry = TT.probe(pos.hash_key);
-    if (tt_entry) {
-        tt_move = Move(tt_entry->move);
-        if (tt_entry->depth >= depth) {
-            int score = tt_entry->score;
-            if (score > 900000) score -= ply;
-            if (score < -900000) score += ply;
-
-            if (tt_entry->flags == TT_EXACT) return score;
-            if (tt_entry->flags == TT_LOWER && score >= beta) return score;
-            if (tt_entry->flags == TT_UPPER && score <= alpha) return score;
-        }
-    }
-
-    int static_eval = -1;
-
-    if (depth == 1 && !in_check) {
-        static_eval = evaluate(pos);
-        if (static_eval + 300 < alpha) {
-            return static_eval;
-        }
-    }
-
-    if (!in_check && do_null && depth >= 3) {
-        int R = 2 + (depth >= 6 ? 1 : 0);
-        pos.make_null_move();
-        int null_score = -search(-beta, -beta + 1, depth - 1 - R, ply + 1, pos, false);
-        pos.unmake_null_move();
-        if (null_score >= beta) {
-            return beta;
-        }
-    }
-
-    Move* captures = CAPTURES[ply];
-    int& num_captures = NUM_CAPTURES[ply];
-    Move* quiets = QUIETS[ply];
-    int& num_quiets = NUM_QUIETS[ply];
-    generate_moves(pos, captures, num_captures, quiets, num_quiets, false);
-    order_moves(captures, num_captures, quiets, num_quiets, ply, tt_move, pos);
-
-    int moves_searched = 0;
-    int best_score = -MATE_VALUE;
-    int second_best = -MATE_VALUE;
-    Move best_move = Move(0);
-    uint8_t tt_flag = TT_UPPER;
-
-    for (int i = 0; i < num_captures + num_quiets; ++i) {
-        Move move = (i < num_captures) ? captures[i] : quiets[i - num_captures];
-        if (!in_check && depth <= 2 && !move.is_capture() && !move.is_promotion()) {
-            if (static_eval == -1) static_eval = evaluate(pos);
-            int futility_margin = 100 + 40 * depth;
-            if (static_eval + futility_margin <= alpha) {
-                continue;
-            }
-        }
-
-        if (!pos.make_move(move)) continue;
-        moves_searched++;
-        int score;
-        bool gives_check = pos.is_check();
-
-        if (moves_searched == 1) {
-            score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
-        } else {
-            int reduction = 0;
-            if (depth >= 3 && moves_searched > 3 && !move.is_capture() && !in_check && !gives_check) {
-                reduction = 1 + static_cast<int>(log2(depth) * log2(moves_searched) * 0.66);
-            }
 
             score = -search(-alpha - 1, -alpha, depth - 1 - reduction + (gives_check ? 1 : 0), ply + 1, pos, true);
             if (score > alpha && score < beta) {
@@ -411,6 +315,7 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             }
             PV_LENGTH[ply] = 1 + PV_LENGTH[ply + 1];
         }
+        if (USE_NNUE) NNUE::nnue_evaluator.update_unmake(pos, move, pos.history[pos.history_size-1], ply);
         pos.unmake_move(move);
 
         if (score > best_score) {
@@ -418,18 +323,18 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
             best_move = move;
         }
 
-        if (best_score >= beta) {
-            int store_score = best_score;
-            if (store_score > 900000) store_score += ply;
-            TT.store(pos.hash_key, move.value, store_score, depth, TT_LOWER);
+    if (best_score >= beta) {
+        // int store_score = best_score;
+        // if (store_score > 900000) store_score += ply;
+        // TT.store(pos.hash_key, move.value, store_score, depth, TT_LOWER);
 
-            if (!move.is_capture()) {
-                KILLER_MOVES[ply][1] = KILLER_MOVES[ply][0];
-                KILLER_MOVES[ply][0] = move;
-                HISTORY_TABLE[move.moving_piece()][move.to()] = std::min(HISTORY_TABLE[move.moving_piece()][move.to()] + depth * depth * 8, HISTORY_MAX);
-            }
-            return beta;
+        if (!move.is_capture()) {
+            KILLER_MOVES[ply][1] = KILLER_MOVES[ply][0];
+            KILLER_MOVES[ply][0] = move;
+            HISTORY_TABLE[move.moving_piece()][move.to()] = std::min(HISTORY_TABLE[move.moving_piece()][move.to()] + depth * depth * 8, HISTORY_MAX);
         }
+        return beta;
+    }
 
         if (best_score > alpha) {
             alpha = best_score;
@@ -455,9 +360,9 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
         }
     }
 
-    int store_score = best_score;
-    if (store_score > 900000) store_score += ply;
-    TT.store(pos.hash_key, best_move.value, store_score, depth, tt_flag);
+    // int store_score = best_score;
+    // if (store_score > 900000) store_score += ply;
+    // TT.store(pos.hash_key, best_move.value, store_score, depth, tt_flag);
 
     return alpha;
 }
@@ -551,9 +456,9 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     int last_score = 0;
     int score = 0;
     int last_completed_depth = 0;
-    std::vector<int> depth_scores;
-    std::vector<double> win_probs;
-    std::vector<std::pair<Move, int>> last_moves_scores;
+    int depth_scores[64];
+    double win_probs[64];
+    std::pair<Move, int> last_moves_scores[256]; // Assuming max moves
 
     for (int current_depth = 1; current_depth <= Limits.max_depth; ++current_depth) {
         // Disable aspiration for now

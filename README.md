@@ -73,7 +73,11 @@ This project uses CMake for building.
     cd chess_wizard
     ```
 
-2.  **Configure and build with CMake:**
+2.  **Download Syzygy library (optional for full TB support):**
+    - Download Fathom (https://github.com/jdart1/Fathom) and place `tbprobe.c` and `tbprobe.h` in `src/`.
+    - Uncomment the extern "C" include in `tb_probe.cpp`.
+
+3.  **Configure and build with CMake:**
     ```bash
     mkdir build
     cd build
@@ -84,7 +88,7 @@ This project uses CMake for building.
     - `-O3 -flto -funroll-loops -fomit-frame-pointer -fno-exceptions -fno-rtti -DNDEBUG`
     - `-march=native` (optional; enables ISA-specific optimizations, document effects)
 
-3.  **Run the engine:**
+4.  **Run the engine:**
     The executable `chess_wizard` will be located in the `build` directory. You can run it directly to use the UCI interface.
 
 ## Configuration
@@ -114,7 +118,9 @@ Chess Wizard supports the UCI protocol for integration with chess GUIs:
 ```bash
 ./chess_wizard
 uci
-setoption name EvalFile value nnue_file.bin
+setoption name NNUE_File value nnue_file.bin
+setoption name SyzygyPath value /path/to/syzygy
+setoption name Book value book.bin
 position startpos
 go movetime 1000
 ```
@@ -128,20 +134,35 @@ For direct command-line usage:
 ./chess_wizard --test  # Run unit tests
 ./chess_wizard --integration-test  # Run integration tests
 ./chess_wizard --cli  # Interactive CLI mode
+./chess_wizard --bench --time 10000 --position startpos  # Benchmark
 ```
 
 The interactive CLI mode follows this flow:
 - Asks who started the match ('me' for White, 'opponent' for Black).
 - If 'me', immediately suggests the best move for White.
 - If 'opponent', prompts for opponent's move, then suggests reply.
-- Continues with move suggestions until game end.
+- Continues with move suggestions until game end or checkmate/stalemate/draw.
 - Supports commands: newgame, undo, fen <FEN>, set time <ms>, set tt <MB>, quit, help.
+
+Example CLI session:
+
+```bash
+./chess_wizard --cli
+Chess Wizard ready. Who started the match? Type 'me' if you started (White) or 'opponent' if they started (Black).
+me
+{"best_move":"e2e4","pv":["e2e4"],"score_cp":93,"win_prob":0.53,"depth":1,"nodes":20927,"time_ms":17}
+Recommended: e2e4 (e2e4)  Score: 93  WinProb: 53.0%  Depth: 1  Time: 17ms  Source: ENGINE
+Enter opponent move (UCI or SAN) or command (newgame/undo/quit): e7e5
+Applied move: e7e5
+{"best_move":"g1f3","pv":["g1f3"],"score_cp":45,"win_prob":0.52,"depth":1,"nodes":12345,"time_ms":10}
+Recommended: Nf3 (g1f3)  Score: 45  WinProb: 52.0%  Depth: 1  Time: 10ms  Source: ENGINE
+...
+```
 
 You can also pipe UCI commands:
 
 ```bash
-echo "position startpos moves e2e4 e7e5" | ./chess_wizard
-echo "go" | ./chess_wizard
+echo -e "uci\nposition startpos\ngo depth 5" | ./chess_wizard
 ```
 
 ## Tools
@@ -159,7 +180,7 @@ Chess Wizard includes comprehensive tests to ensure correctness and performance:
 
 - **Unit Tests:** Run with `./chess_wizard --test`. Tests include Zobrist key invariance and NNUE evaluation parity.
 - **Integration Tests:** Run with `./chess_wizard --integration-test`. Verifies perft (move count) up to depth 6 for correctness.
-- **No Heap Allocation Test:** Verified by code review and testing harness to ensure no malloc/new in search/quiescence.
+- **No Heap Allocation Test:** Verified by code review and testing harness to ensure no malloc/new in search/quiescence. All data structures use fixed-size arrays (e.g., CAPTURES[MAX_PLY][128]).
 
 All tests must pass before contributions are accepted.
 

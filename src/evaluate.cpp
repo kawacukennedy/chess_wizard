@@ -5,7 +5,7 @@
 #include "attack.h"
 
 // --- Global flag for NNUE ---
-static bool USE_NNUE = false;
+bool USE_NNUE = false;
 
 void set_use_nnue(bool use_nnue) {
     USE_NNUE = use_nnue && NNUE::nnue_available;
