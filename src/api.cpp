@@ -21,11 +21,14 @@ void free_api_memory(void* ptr) {
     free(ptr);
 }
 
+extern void init_zobrist_keys(uint64_t seed);
+
 extern "C" SearchResult chess_wizard_suggest_move(const char* fen, uint32_t max_time_ms, uint8_t max_depth, const ChessWizardOptions* opts) {
     // Initialize if not done
     static bool initialized = false;
     if (!initialized) {
         init_all();
+        init_zobrist_keys(0x9E3779B97F4A7C15ULL);
         initialized = true;
     }
 

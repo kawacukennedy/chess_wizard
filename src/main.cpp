@@ -366,7 +366,7 @@ void cli_loop() {
             if (!book_used) {
                 SearchLimits limits;
                 limits.movetime = time_ms;
-                limits.max_depth = 64;
+                limits.max_depth = 1;
                 SearchResult result = search_position(pos, limits, &OPTIONS);
                 print_result(result, pos);
                 pos.make_move(get_move_from_uci(result.best_move_uci, pos));
@@ -509,7 +509,7 @@ void cli_loop() {
             // Suggest move
             SearchLimits limits;
             limits.movetime = time_ms;
-            limits.max_depth = 64;
+            limits.max_depth = 1;
             SearchResult result = search_position(pos, limits, &OPTIONS);
             print_result(result, pos);
             pos.make_move(get_move_from_uci(result.best_move_uci, pos));

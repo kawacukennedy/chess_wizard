@@ -72,6 +72,7 @@ void generate_pawn_moves(const Position& pos, Move* captures, int& num_captures,
 }
 
 template<PieceType Pt>
+template<PieceType Pt>
 void generate_piece_moves(const Position& pos, Move* captures, int& num_captures, Move* quiets, int& num_quiets, bool captures_only) {
     Color us = pos.side_to_move;
     Bitboard our_pieces = pos.piece_bitboards[Pt];

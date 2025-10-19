@@ -41,7 +41,7 @@ std::string BOOK_PATH_BUFFER;
 
 void init_all() {
     init_attacks();
-    // init_zobrist_keys called separately with seed
+    init_zobrist_keys(0x9E3779B97F4A7C15ULL);
     TT.resize(32); // default
 }
 

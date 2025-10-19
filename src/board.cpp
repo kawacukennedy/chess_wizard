@@ -33,7 +33,8 @@ void Position::set_from_fen(const std::string& fen) {
     occAll = 0;
     history_size = 0;
 
-    std::istringstream iss(fen);
+    std::string actual_fen = (fen == "startpos") ? START_FEN : fen;
+    std::istringstream iss(actual_fen);
     std::string board_str, side_str, castle_str, ep_str, hm_str, fm_str;
     iss >> board_str >> side_str >> castle_str >> ep_str >> hm_str >> fm_str;
 

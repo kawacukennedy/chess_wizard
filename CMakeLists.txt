@@ -63,19 +63,19 @@ set(SOURCE_FILES
 add_executable(chess_wizard ${SOURCE_FILES})
 
 # Public include directory for the executable
-target_include_directories(chess_wizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(chess_wizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # 2. Static Library Target: libchesswizard.a
-add_library(libchesswizard STATIC ${SOURCE_FILES})
+# add_library(libchesswizard STATIC ${SOURCE_FILES})
 
 # Public include directory for the library
-target_include_directories(libchesswizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# target_include_directories(libchesswizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # 3. Shared Library Target: libchesswizard.so (for Python wrapper)
-add_library(libchesswizard_shared SHARED ${SOURCE_FILES})
+# add_library(libchesswizard_shared SHARED ${SOURCE_FILES})
 
 # Public include directory for the shared library
-target_include_directories(libchesswizard_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# target_include_directories(libchesswizard_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # --- Build Information ---
 

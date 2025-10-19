@@ -151,7 +151,7 @@ int see(const Position& pos, Move move) {
     PieceType moving = move.moving_piece();
     PieceType captured = move.captured_piece();
 
-    int gain[32];
+    int gain[64];
     int d = 0;
     Bitboard may_xray = pos.piece_bitboards[WB] | pos.piece_bitboards[BB] | pos.piece_bitboards[WR] | pos.piece_bitboards[BR] | pos.piece_bitboards[WQ] | pos.piece_bitboards[BQ];
     Bitboard from_bb = 1ULL << from;
@@ -183,6 +183,7 @@ int see(const Position& pos, Move move) {
     if (captured != NO_PIECE) occ ^= (1ULL << to); // Remove captured piece
 
     while (attackers) {
+        if (d >= 64) break;
         // Find least valuable attacker
         PieceType pt = NO_PIECE;
         Bitboard attacker_bb = 0;

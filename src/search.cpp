@@ -195,6 +195,160 @@ void clear_search_globals() {
     }
 }
 
+// --- Search Function ---
+int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null) {
+    NodeCount++;
+    if (StopSearch) return 0;
+
+    if (ply > MAX_PLY) return evaluate(pos);
+
+    // Draw detection
+    if (is_draw(pos)) return 0;
+
+    bool in_check = pos.is_check();
+
+    // Check extension
+    if (in_check) depth++;
+
+    // Quiescence at leaf nodes
+    if (depth <= 0) return quiescence(alpha, beta, ply, pos);
+
+    // TT probe
+    TTEntry* tt_entry_ptr = TT.probe(pos.hash_key);
+    Move tt_move = Move(0);
+    if (tt_entry_ptr) {
+        tt_move = Move(tt_entry_ptr->move);
+        if (tt_entry_ptr->depth >= depth) {
+            int tt_score = tt_entry_ptr->score;
+            if (abs(tt_score) > MATE_VALUE - 1000) {
+                if (tt_score > 0) tt_score -= ply;
+                else tt_score += ply;
+            }
+            if (tt_entry_ptr->flags == TT_EXACT) return tt_score;
+            if (tt_entry_ptr->flags == TT_LOWER && tt_score >= beta) return tt_score;
+            if (tt_entry_ptr->flags == TT_UPPER && tt_score <= alpha) return tt_score;
+        }
+    }
+
+    int static_eval = evaluate(pos);
+    bool improving = false; // TODO: implement improving
+
+    // Null move pruning
+    bool has_non_pawn = false;
+    for (int pt = WN; pt <= BQ; ++pt) {
+        if (pos.piece_bitboards[pt] != 0) { has_non_pawn = true; break; }
+    }
+    if (do_null && !in_check && depth >= 3 && static_eval >= beta && has_non_pawn) {
+        int R = 3 + depth / 6;
+        pos.make_null_move();
+        int null_score = -search(-beta, -beta + 1, depth - R, ply + 1, pos, false);
+        pos.unmake_null_move();
+        if (null_score >= beta) return beta;
+    }
+
+    // Internal iterative deepening
+    if (depth >= 4 && tt_move.value == 0) {
+        search(alpha, beta, depth - 2, ply, pos, do_null);
+        TTEntry* tt_entry_ptr2 = TT.probe(pos.hash_key);
+        if (tt_entry_ptr2) {
+            tt_move = Move(tt_entry_ptr2->move);
+        }
+    }
+
+    Move* captures = CAPTURES[ply];
+    int& num_captures = NUM_CAPTURES[ply];
+    Move* quiets = QUIETS[ply];
+    int& num_quiets = NUM_QUIETS[ply];
+    generate_moves(pos, captures, num_captures, quiets, num_quiets, false);
+    order_moves(captures, num_captures, quiets, num_quiets, ply, tt_move, pos);
+
+    int best_score = -MATE_VALUE;
+    Move best_move = Move(0);
+    int moves_searched = 0;
+    int tt_flag = TT_UPPER;
+    int second_best = -MATE_VALUE;
+
+    for (int i = 0; i < num_captures + num_quiets; ++i) {
+        Move move = (i < num_captures) ? captures[i] : quiets[i - num_captures];
+        if (move == tt_move) continue; // Already searched TT move first
+
+        bool gives_check = false; // TODO: implement gives_check
+        int reduction = 0;
+
+        // Late move reduction
+        if (moves_searched >= 4 && depth >= 3 && !move.is_capture() && !gives_check && !in_check) {
+            reduction = 1 + (moves_searched >= 8 ? 1 : 0);
+            if (!improving) reduction++;
+        }
+
+        if (!pos.make_move(move)) continue;
+        // if (USE_NNUE) NNUE::nnue_evaluator.update_make(pos, move, pos.history[pos.history_size-1], ply);
+
+        int score;
+        if (moves_searched == 0) {
+            score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
+        } else {
+            // PVS
+            score = -search(-alpha - 1, -alpha, depth - 1 - reduction + (gives_check ? 1 : 0), ply + 1, pos, true);
+            if (score > alpha && score < beta) {
+                score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
+            }
+        }
+        if (score > alpha) {
+            alpha = score;
+            PV_TABLE[ply][ply] = move;
+            for (int i = 0; i < PV_LENGTH[ply + 1]; ++i) {
+                PV_TABLE[ply][ply + 1 + i] = PV_TABLE[ply + 1][ply + 1 + i];
+            }
+            PV_LENGTH[ply] = 1 + PV_LENGTH[ply + 1];
+        }
+        // if (USE_NNUE) NNUE::nnue_evaluator.update_unmake(pos, move, pos.history[pos.history_size-1], ply);
+        pos.unmake_move(move);
+
+        if (score > best_score) {
+            best_score = score;
+            best_move = move;
+        }
+        if (score > second_best && score < best_score) second_best = score;
+
+        moves_searched++;
+
+        if (best_score >= beta) {
+            if (!move.is_capture()) {
+                KILLER_MOVES[ply][1] = KILLER_MOVES[ply][0];
+                KILLER_MOVES[ply][0] = move;
+                HISTORY_TABLE[move.moving_piece()][move.to()] = std::min(HISTORY_TABLE[move.moving_piece()][move.to()] + depth * depth * 8, HISTORY_MAX);
+            }
+            return beta;
+        }
+
+        if (best_score > alpha) {
+            alpha = best_score;
+            tt_flag = TT_EXACT;
+            PV_TABLE[ply][ply] = move;
+            for (int next_ply = ply + 1; next_ply < PV_LENGTH[ply + 1]; ++next_ply) {
+                PV_TABLE[ply][next_ply] = PV_TABLE[ply + 1][next_ply];
+            }
+            PV_LENGTH[ply] = PV_LENGTH[ply + 1];
+        }
+    }
+
+    if (moves_searched == 0) {
+        return in_check ? -(MATE_VALUE - ply) : 0;
+    }
+
+    // Singular extension
+    if (best_score - second_best >= 60 * depth && depth < 60) {
+        int extended_score = search(alpha, beta, depth + 1, ply, pos, do_null);
+        if (abs(extended_score) < MATE_VALUE) {
+            best_score = extended_score;
+            if (best_score > alpha) alpha = best_score;
+        }
+    }
+
+    return alpha;
+}
+
 // --- Policy Score ---
 int policy_score(Move m);
 
@@ -302,90 +456,28 @@ int quiescence(int alpha, int beta, int ply, Position& pos) {
     return alpha;
 }
 
-            score = -search(-alpha - 1, -alpha, depth - 1 - reduction + (gives_check ? 1 : 0), ply + 1, pos, true);
-            if (score > alpha && score < beta) {
-                score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
-            }
-        }
-        if (score > alpha) {
-            alpha = score;
-            PV_TABLE[ply][ply] = move;
-            for (int i = 0; i < PV_LENGTH[ply + 1]; ++i) {
-                PV_TABLE[ply][ply + 1 + i] = PV_TABLE[ply + 1][ply + 1 + i];
-            }
-            PV_LENGTH[ply] = 1 + PV_LENGTH[ply + 1];
-        }
-        if (USE_NNUE) NNUE::nnue_evaluator.update_unmake(pos, move, pos.history[pos.history_size-1], ply);
-        pos.unmake_move(move);
 
-        if (score > best_score) {
-            best_score = score;
-            best_move = move;
-        }
-
-    if (best_score >= beta) {
-        // int store_score = best_score;
-        // if (store_score > 900000) store_score += ply;
-        // TT.store(pos.hash_key, move.value, store_score, depth, TT_LOWER);
-
-        if (!move.is_capture()) {
-            KILLER_MOVES[ply][1] = KILLER_MOVES[ply][0];
-            KILLER_MOVES[ply][0] = move;
-            HISTORY_TABLE[move.moving_piece()][move.to()] = std::min(HISTORY_TABLE[move.moving_piece()][move.to()] + depth * depth * 8, HISTORY_MAX);
-        }
-        return beta;
-    }
-
-        if (best_score > alpha) {
-            alpha = best_score;
-            tt_flag = TT_EXACT;
-            PV_TABLE[ply][ply] = move;
-            for (int next_ply = ply + 1; next_ply < PV_LENGTH[ply + 1]; ++next_ply) {
-                PV_TABLE[ply][next_ply] = PV_TABLE[ply + 1][next_ply];
-            }
-            PV_LENGTH[ply] = PV_LENGTH[ply + 1];
-        }
-    }
-
-    if (moves_searched == 0) {
-        return in_check ? -(MATE_VALUE - ply) : 0;
-    }
-
-    // Singular extension
-    if (best_score - second_best >= 60 * depth && depth < 60) {
-        int extended_score = search(alpha, beta, depth + 1, ply, pos, do_null);
-        if (abs(extended_score) < MATE_VALUE) {
-            best_score = extended_score;
-            if (best_score > alpha) alpha = best_score;
-        }
-    }
-
-    // int store_score = best_score;
-    // if (store_score > 900000) store_score += ply;
-    // TT.store(pos.hash_key, best_move.value, store_score, depth, tt_flag);
-
-    return alpha;
-}
 
 
 
 
 
 // --- Get root moves scores ---
-std::vector<std::pair<Move, int>> get_root_moves_scores(Position& pos, int depth) {
+int get_root_moves_scores(Position& pos, int depth, std::pair<Move, int>* scores, int max_scores) {
     MoveList moves;
     generate_moves(pos, moves);
     order_moves(moves, 0, Move(0), pos); // No TT move for simplicity
 
-    std::vector<std::pair<Move, int>> scores;
+    int count = 0;
     for (const auto& move : moves) {
+        if (count >= max_scores) break;
         if (pos.make_move(move)) {
             int score = -search(-MATE_VALUE, MATE_VALUE, depth - 1, 1, pos, true);
             pos.unmake_move(move);
-            scores.push_back({move, score});
+            scores[count++] = {move, score};
         }
     }
-    return scores;
+    return count;
 }
 
 
@@ -458,7 +550,9 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     int last_completed_depth = 0;
     int depth_scores[64];
     double win_probs[64];
+    int depth_idx = 0;
     std::pair<Move, int> last_moves_scores[256]; // Assuming max moves
+    int last_moves_count = 0;
 
     for (int current_depth = 1; current_depth <= Limits.max_depth; ++current_depth) {
         // Disable aspiration for now
@@ -471,7 +565,7 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
             break;
         }
 
-        last_moves_scores = get_root_moves_scores(pos, current_depth);
+        last_moves_count = get_root_moves_scores(pos, current_depth, last_moves_scores, 256);
 
         if (StopSearch && current_depth > 1) {
             break;
@@ -479,8 +573,9 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
 
         last_score = score;
         last_completed_depth = current_depth;
-        depth_scores.push_back(score);
-        win_probs.push_back(sigmoid_win_prob(score));
+        depth_scores[depth_idx] = score;
+        win_probs[depth_idx] = sigmoid_win_prob(score);
+        depth_idx++;
 
         auto end_time = std::chrono::steady_clock::now();
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
@@ -523,20 +618,21 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
 
     // Calculate uncertainty as stddev of depth scores
     double stddev_cp = 0.0;
-    if (depth_scores.size() > 1) {
+    if (depth_idx > 1) {
         double mean = 0.0;
-        for (int s : depth_scores) mean += s;
-        mean /= depth_scores.size();
-        for (int s : depth_scores) stddev_cp += (s - mean) * (s - mean);
-        stddev_cp = sqrt(stddev_cp / (depth_scores.size() - 1));
+        for (int i = 0; i < depth_idx; ++i) mean += depth_scores[i];
+        mean /= depth_idx;
+        double stddev_cp = 0.0;
+        for (int i = 0; i < depth_idx; ++i) stddev_cp += (depth_scores[i] - mean) * (depth_scores[i] - mean);
+        stddev_cp = sqrt(stddev_cp / (depth_idx - 1));
         result.win_prob_stddev = sigmoid_win_prob(score + stddev_cp) - sigmoid_win_prob(score - stddev_cp);
     }
 
     // Monte Carlo tie-break
-    std::sort(last_moves_scores.begin(), last_moves_scores.end(), [](const auto& a, const auto& b) {
+    std::sort(last_moves_scores, last_moves_scores + last_moves_count, [](const auto& a, const auto& b) {
         return a.second > b.second;
     });
-    if (last_moves_scores.size() >= 2 && abs(last_moves_scores[0].second - last_moves_scores[1].second) <= 20) {
+    if (last_moves_count >= 2 && abs(last_moves_scores[0].second - last_moves_scores[1].second) <= 20) {
         // Run rollouts for top 2 moves
         Position temp_pos = pos;
         temp_pos.make_move(last_moves_scores[0].first);
