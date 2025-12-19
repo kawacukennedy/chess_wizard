@@ -87,7 +87,20 @@ void Position::set_from_fen(const std::string& fen) {
 
     // Compute hash
     hash_key = 0;
-    // TODO: compute zobrist hash
+    for (int sq = 0; sq < 64; ++sq) {
+        PieceType pt = piece_of_square[sq];
+        if (pt != NO_PIECE) {
+            hash_key ^= Zobrist.piece_keys[pt][sq];
+        }
+    }
+    if (side_to_move == BLACK) {
+        hash_key ^= Zobrist.side_to_move_key;
+    }
+    hash_key ^= Zobrist.castling_keys[castling_rights];
+    if (en_passant_sq != NO_SQUARE) {
+        int file = en_passant_sq % 8;
+        hash_key ^= Zobrist.en_passant_keys[file];
+    }
 }
 
 PieceType Position::piece_on_square(Square sq) const {

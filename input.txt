@@ -1,6 +1,0 @@
-uci
-ucinewgame
-position startpos
-go depth 1
-b1c3
-go depth 1

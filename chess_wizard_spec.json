@@ -1,319 +1,379 @@
 {
-  "app_name": "Chess Wizard",
-  "title": "Chess Wizard — Ultimate Surgical Spec for Ultra-Efficient & Ultra-Accurate Win-Optimized Chess Move Predictor (C++20)",
-  "purpose": "A single, copy-pasteable JSON specification for engineers or code-generation models to implement Chess Wizard. The goal: maximize practical win probability and tactical accuracy while keeping the engine extremely efficient (low latency, high nodes/sec). Every algorithm, data layout, constant, API, and pseudocode step is explicitly specified so implementation can be mechanical.",
-  "language_choice": {
-    "primary": "C++20",
-    "rationale": "Deterministic low-level control, intrinsics, wide tooling for high-performance chess engines (NNUE integration, AVX2/AVX512 where available), and easy C ABI for bindings."
-  },
-  "build_and_runtime": {
-    "cmake_minimum": "3.20",
-    "recommended_compiler_flags": [
-      "-O3",
-      "-march=native (optional, document effect)",
-      "-flto",
-      "-funroll-loops",
-      "-fomit-frame-pointer",
-      "-fno-exceptions",
-      "-fno-rtti",
-      "-DNDEBUG"
-    ],
-    "sanity_flags_for_debug": ["-O1 -g -fsanitize=address,undefined -DDEBUG"],
-    "default_targets": ["chess_wizard (binary)", "libchesswizard.a (static API)"],
-    "platforms": ["Linux x86_64", "Linux arm64", "macOS x86_64/arm64", "Windows MinGW x86_64"]
-  },
-  "performance_targets": {
-    "single_thread_nodes_per_sec": {
-      "x86_64_AVX2_modern": ">= 6,000,000 nodes/sec (starting position, -O3)",
-      "x86_64_nonAVX": ">= 3,000,000 nodes/sec",
-      "arm64_neon": ">= 3,000,000 nodes/sec"
+  "project_overview": {
+    "application_name": "Chess Wizard",
+    "purpose": "Chess Wizard is a fully local, AI-powered chess application designed to provide real-time move suggestions, analysis, and gameplay for users of all skill levels, from beginners to advanced players.",
+    "target_audience": {
+      "skill_levels": ["Beginner", "Intermediate", "Advanced", "Professional"],
+      "use_cases": ["Practice games against AI", "Real-time move suggestions", "Post-game analysis", "Tactical training", "Opening preparation"]
     },
-    "response_latency": "Under 200ms for 0.1s time budget with shallow search; <50ms overhead outside search",
-    "memory_budget_default": "TT default = 32 MiB, configurable via --tt-size",
-    "max_ply_limit": 128
-  },
-  "core_api": {
-    "C++_function_signature": "extern \"C\" SearchResult chess_wizard_suggest_move(const char *fen_or_moves, int max_time_ms, int max_depth, const ChessWizardOptions *opts);",
-    "SearchResult_struct": {
-      "best_move_uci": "char[8]",
-      "pv_uci": "vector<string> or serialized char** in C ABI",
-      "score_cp": "int32",
-      "win_prob": "double (0.0..1.0)",
-      "depth": "int",
-      "nodes": "uint64",
-      "time_ms": "int",
-      "info_flags": "bitfield (e.g., TB_OVERRIDE, BOOK_MOVE, RESIGN_RECOMMENDED)"
-    },
-    "ChessWizardOptions_struct": {
-      "use_nnue": "bool",
-      "nnue_path": "const char * (path to nnue.bin)",
-      "use_tb": "bool",
-      "tb_paths": "const char ** (array of Syzygy TB folders)",
-      "book_path": "const char *",
-      "tt_size_mb": "int",
-      "multi_pv": "int (0=off, >0 show top-K)",
-      "resign_threshold": "double (default 0.01)"
+    "core_value_proposition": "Provide accurate, efficient, and real-time chess move suggestions using a high-performance C++ engine with advanced search and evaluation algorithms, fully localized with no cloud dependency.",
+    "success_metrics": {
+      "accuracy": "Engine's suggested move matches top 3 engine moves in ≥95% of cases at depth 20",
+      "performance": "Moves calculated within 2 seconds on standard desktop CPU with default time settings",
+      "user_engagement": "Average session length ≥30 minutes and ≥5 games per user per week",
+      "stability": "Zero crashes during gameplay; memory leaks ≤1 per 10,000 moves"
     }
   },
-  "data_layouts_and_constants": {
-    "square_indexing": "0..63 (a1=0, b1=1, ..., h8=63)",
-    "bitboard_order": "uint64_t bitboards[12] // {WP, WN, WB, WR, WQ, WK, BP, BN, BB, BR, BQ, BK}",
-    "occupancies": "uint64_t occWhite, occBlack, occAll (derived from bitboards)",
-    "piece_index_map": {
-      "WP": 0, "WN": 1, "WB": 2, "WR": 3, "WQ": 4, "WK": 5,
-      "BP": 6, "BN": 7, "BB": 8, "BR": 9, "BQ": 10, "BK": 11
-    },
-    "move_32bit_layout": {
-      "uint32_t move": {
-        "bits_0_5": "from (6 bits)",
-        "bits_6_11": "to (6 bits)",
-        "bits_12_15": "moving_piece (4 bits 0..11)",
-        "bits_16_19": "captured_piece (4 bits 0..11 or 15 for none)",
-        "bits_20_22": "promotion (0=none,1=N,2=B,3=R,4=Q)",
-        "bits_23_25": "flags (bit0=enpassant,bit1=castling,bit2=doublepush)",
-        "bits_26_31": "ordering_hint or reserved (6 bits)"
-      }
-    },
-    "zobrist_spec": {
-      "key_type": "uint64_t",
-      "tables": "zobrist_piece[12][64], zobrist_side, zobrist_castle[16], zobrist_ep_file[8]",
-      "rng": "SplitMix64 seeded with 0x9E3779B97F4A7C15ULL for deterministic builds",
-      "history_stack": "uint64_t zobrist_history[MAX_PLY]"
-    },
-    "transposition_table": {
-      "entry_struct": "struct TTEntry { uint64_t key; uint32_t move; int32_t score; int8_t depth; uint8_t flags; uint8_t age; uint8_t padding[5]; } // aligned to 32 bytes",
-      "default_entries": 4194304,
-      "replacement_policy": "Replace if new.depth > old.depth OR old.age != current_age OR (new.depth == old.depth && key_lowbits xor old_key_lowbits < threshold)",
-      "flags_enum": {"EXACT":0, "LOWER":1, "UPPER":2}
-    },
-    "magic_bitboards": {
-      "use": "Rook and bishop magic bitboards with precomputed constants. If implementing from scratch, include deterministic generator and fallback sliding algorithm for correctness.",
-      "fallback": "if magic constants unavailable, use debruijn/sliding loops with occupancy masking."
-    },
-    "hot_helpers": {
-      "lsb": "inline int lsb_index(uint64_t b) { return __builtin_ctzll(b); }",
-      "popcount": "inline int popcnt(uint64_t b) { return __builtin_popcountll(b); }",
-      "is_power_of_two": "use b && !(b & (b-1))"
-    }
-  },
-  "move_generation_rules": {
-    "approach": "Generate pseudo-legal moves quickly (captures first, then quiets). Only at root generate legal set by fast make/unmake + king-in-check test; deeper rely on pseudo-legal with checks filtered by make/unmake.",
-    "buffers": "Fixed-size per-ply arrays: Move moves[256]; Move captures[128]; Move quiets[128]; Do NOT allocate on heap during search.",
-    "castling": "Strict FIDE rules, check path squares not attacked, update castling rights properly on rook/king moves.",
-    "en_passant": "Represent ep file as int8 (0..7 or -1), zobrist EP by file only.",
-    "move_ordering_initial_scores": {
-      "TT_move": "score = +1<<20",
-      "captures": "score = 100000 + MVV-LVA_index (descending), use SEE to demote losing captures",
-      "promotions": "promotion to queen > other promotions",
-      "killer_moves": "score += 8000 and 7000 for killer1/2",
-      "history": "score += history_table[piece][to] >> history_shift"
-    }
-  },
-  "search_algorithm": {
-    "main": "Iterative Deepening with Aspiration Windows + Principal Variation Search (PVS) in negamax form",
-    "iteration": "for depth=1..max_depth: set aspiration = max(80, floor(5 * depth)); alpha = last_score - aspiration; beta = last_score + aspiration; call root_search(alpha,beta,depth); if out-of-window, expand window and re-search until stable or 3 expansions",
-    "search_signature": "int search(int alpha, int beta, int depth, int ply, bool do_null = true);",
-    "pv_storage": "pv_table[MAX_PLY][MAX_PLY], pv_length[MAX_PLY]",
-    "node_counting": "Increment nodes at entry of search(); perform time check every TIME_CHECK_NODES nodes (4096).",
-    "time_management": {
-      "node_check_interval": 4096,
-      "deadline_margin_ms": 30,
-      "stop_flag": "atomic bool search_stop"
-    },
-    "quiescence": {
-      "signature": "int quiescence(int alpha, int beta, int ply);",
-      "moves": "captures and promotions only, sorted by SEE/MVV-LVA",
-      "stand_pat": "int stand = eval(); if (stand >= beta) return beta; alpha = max(alpha, stand);"
-    },
-    "pruning_and_reductions": {
-      "null_move": {
-        "conditions": "if !in_check && depth >= 3 && !endgame_flag && !odd_material_edgecase",
-        "reduction_R": "R = (depth >= 6) ? 3 : 2",
-        "safe_guards": "skip if side has only king+pawn or attacker_density_high"
-      },
-      "LMR": {
-        "conditions": "non-capture, non-check moves, depth >= 3, move_index > 3",
-        "reduction_formula": "r = 1 + floor(log2(depth) * log2(move_index+1) * 0.66) // use integer lookup table for log2"
-      },
-      "futility": {
-        "when": "depth <= 2 and move quiet",
-        "margin": "margin = 100 + 40*depth (centipawns)",
-        "disable": "if in_check || attacker_density_high"
-      },
-      "razoring": {
-        "when": "depth == 1 and stand_pat + 300 < alpha -> return stand_pat"
-      }
-    },
-    "extensions": {
-      "check_extension": "extend +1 ply if move gives check to opponent",
-      "promotion_extension": "extend +1 for promotion moves not to queen or when SEE indicates major swing",
-      "singular_extension": "if best_score - second_best_score >= 60*depth then +1 extension and re-search"
-    },
-    "mate_handling": {
-      "encoding": "Mate score = (MATE_VALUE - ply). Use MATE_VALUE = 1000000",
-      "distance_adjust": "When storing mate in TT, store distance to mate to prefer faster mates"
-    }
-  },
-  "evaluation_system": {
-    "architecture": "Primary NNUE evaluator with classical fallback",
-    "NNUE_spec": {
-      "input_features": "Sparse piece-square features: for each piece type & square encode presence; use per-side feature indexing like Stockfish (e.g., 768 inputs packed into indices).",
-      "hidden_layers": "Single hidden layer 256 neurons (int32 accumulators), ReLU, output scalar",
-      "weights": "Quantized int16 or int8 weights on disk (nnue.bin) with documented loader; runtime conversion to int32 for dot products",
-      "incremental_api": {
-        "nnue_init(const char* path, bool quantized) ": "Load weights, allocate aligned buffers (alignas(64)).",
-        "nnue_reset(Position const&) ": "compute base activation from position",
-        "nnue_update_make(StateInfo const&) ": "apply delta to activation using precomputed feature deltas",
-        "nnue_undo(StateInfo const&) ": "reverse delta quickly",
-        "nnue_eval() -> int32": "returns centipawn-like scalar; bounded to [-300000, +300000]"
-      },
-      "performance": "Use vectorized dot-product for hidden->output optionally via AVX2; otherwise portable scalar loops. Keep all NNUE buffers aligned and in contiguous memory. Avoid branching inside inner loops."
-    },
-    "classical_eval": {
-      "integer_only": "int32 centipawn arithmetic only",
+  "system_architecture": {
+    "high_level_architecture": {
       "components": [
-        "Material (P=100,N=320,B=330,R=500,Q=900)",
-        "PST (int16_t mg[6][64], eg[6][64]) with phase interpolation",
-        "Pawn structure: doubled (-25), isolated (-15), backward (-10), passed bonus (20 + 10 * rank_advance)",
-        "King safety: shield penalty/attacker penalty with small radii masks",
-        "Mobility: capped counts per piece class with multipliers",
-        "Tempo: +10 for side to move"
+        "C++ Chess Engine Core",
+        "Local GUI (desktop application using Qt5/Qt6)",
+        "Persistent Storage Module (SQLite for game history and user settings)",
+        "Resource Manager (assets, opening book, NNUE weights)",
+        "Logging and Analytics Module"
       ],
-      "incremental": "On make/unmake update only changed piece contributions and store eval_delta in StateInfo."
+      "data_flow": {
+        "user_input": "GUI → Input Parser → Chess Engine Core",
+        "engine_output": "Chess Engine Core → Move Suggestion → GUI",
+        "game_persistence": "Engine/GUI → SQLite storage",
+        "analysis_output": "Engine → Evaluation Data → GUI Graphs/Side Panel"
+      },
+      "deployment": {
+        "architecture": "Fully local desktop application",
+        "platforms": ["Windows 10+", "macOS 10.15+", "Linux x86_64"],
+        "installation": "Single binary installer with embedded resources"
+      }
     },
-    "score_calibration": {
-      "function": "sigmoid: p = 1 / (1 + exp(-k*(cp + offset)/100.0))",
-      "default_params": {"k": 0.0045, "offset": 0.0},
-      "training_instructions": "Fit k and offset via logistic regression on dataset of (cp, outcome) pairs. Use BFGS or LBFGS on log-loss. Provide calibration script in Python that takes CSV of (cp, outcome), outputs k and offset.",
-      "mate_mapping": "If cp encodes mate_in_n for side_to_move, set p=1.0 - 1e-12; if opponent mate, p=1e-12."
-    },
-    "uncertainty_measure": "Compute standard deviation across successive completed depths (delta scores) and expose win_prob_stddev approx = stddev_cp * k / 100; include in SearchResult."
-  },
-  "tablebases_and_endgame_handling": {
-    "syzygy_integration": {
-      "probe_api": "bool probe_syzygy(Position&, TBResult &res);",
-      "tb_priority": "If TB reports forced mate/win/draw, override search and return TB PV immediately.",
-      "dtz_vs_wdl": "Prefer DTZ when available for move selection minimizing 50-move rule zeroing; use WDL for high-level result."
-    },
-    "endgame_eval_tweaks": "When material small (< 7 pieces), bias classical eval for king positioning and pawn races; disable null-move pruning conservatively."
-  },
-  "opening_book": {
-    "format": "Polyglot compatible or custom binary CSV->packed format",
-    "use_policy": {
-      "lookup": "If position in book and book_move.weight >= min_weight (default 10), choose book move or treat as high-priority in root order",
-      "randomization": "Select among top book moves proportional to historical win_prob to avoid determinism",
-      "book_stats_storage": "Store play_count, avg_score_cp, winrate, drawrate, lossrate per move to help root ordering"
+    "chess_engine_core": {
+      "engine_implementation": {
+        "language": "C++17",
+        "justification": [
+          "High performance required for bitboard manipulations and alpha-beta search",
+          "Deterministic memory management",
+          "Full control over compiler optimizations",
+          "Compatibility with modern C++ standard library features"
+        ],
+        "compiler_requirements": ["GCC ≥10", "Clang ≥12", "MSVC ≥2019"],
+        "optimization_flags": ["-O3", "-march=native", "-flto", "-funroll-loops", "-fomit-frame-pointer"],
+        "build_system": {
+          "cmake_minimum_required": "3.18",
+          "targets": ["chess_wizard", "unit_tests", "cli_tools"],
+          "directory_structure": {
+            "src/engine": ["board.cpp", "board.h", "movegen.cpp", "movegen.h", "search.cpp", "search.h", "evaluation.cpp", "evaluation.h", "uci.cpp", "uci.h", "nnue.cpp", "nnue.h", "tt.cpp", "tt.h"],
+            "src/gui": ["mainwindow.cpp", "mainwindow.h", "chessboardwidget.cpp", "chessboardwidget.h", "sidepanel.cpp", "sidepanel.h"],
+            "src/storage": ["sqlite_manager.cpp", "sqlite_manager.h", "opening_book.cpp", "opening_book.h"],
+            "include": ["common.h", "constants.h", "types.h", "utils.h"],
+            "tests": ["perft_tests.cpp", "evaluation_tests.cpp", "movegen_tests.cpp", "integration_tests.cpp"],
+            "resources": ["nnue_weights.bin", "opening_book.bin", "piece_svgs/", "icons/"]
+          }
+        }
+      },
+      "core_modules": {
+        "board_representation": {
+          "bitboard": {
+            "type": "uint64_t",
+            "pieces": ["WP", "WN", "WB", "WR", "WQ", "WK", "BP", "BN", "BB", "BR", "BQ", "BK"],
+            "layout": "Each bit represents a square a1-h8 (LSB a1, MSB h8)",
+            "state_tracking": {
+              "castling_rights": "uint8_t bits: white_kingside, white_queenside, black_kingside, black_queenside",
+              "en_passant_file": "int8_t (-1 if none, 0-7 for files a-h)",
+              "halfmove_clock": "uint16_t",
+              "fullmove_number": "uint16_t"
+            },
+            "zobrist_hashing": {
+              "tables": ["piece_square[12][64]", "side_to_move", "castling[16]", "ep_file[8]"],
+              "key_type": "uint64_t",
+              "collision_probability": "<1e-15"
+            }
+          }
+        },
+        "move_generation": {
+          "legal_moves": "Generated using precomputed attack tables; pseudo-legal moves filtered for king safety",
+          "move_encoding": {
+            "type": "uint32_t",
+            "fields": {
+              "from_square": "bits 0-5",
+              "to_square": "bits 6-11",
+              "moving_piece": "bits 12-15",
+              "captured_piece": "bits 16-19",
+              "promotion_piece": "bits 20-22",
+              "flags": "bits 23-25 (castling, en passant, double pawn push)"
+            }
+          },
+          "special_moves": ["castling", "en_passant", "pawn_promotions"],
+          "attack_detection": "Bitboard masks and precomputed tables for knight, bishop, rook, queen, king, and pawns",
+          "check_validation": "Simulated move and king safety check before accepting legal move"
+        },
+        "search_algorithm": {
+          "iterative_deepening": "Depth-limited search with increasing depth until time or max depth reached",
+          "alpha_beta_pruning": "Negamax with alpha-beta cutoffs",
+          "principal_variation_search": "PVS optimization to reduce search window for non-first moves",
+          "transposition_table": {
+            "entry_structure": {
+              "key": "uint64_t",
+              "move": "uint32_t",
+              "score": "int32_t",
+              "depth": "uint8_t",
+              "flags": "uint8_t",
+              "age": "uint8_t"
+            },
+            "size": "Configurable, default 32MB",
+            "replacement_policy": "Deeper depth preferred, then youngest age"
+          },
+          "move_ordering": ["TT move first", "captures ordered by MVV-LVA", "killer moves", "history heuristic"],
+          "quiescence_search": "Extends search at leaf nodes for captures, checks, and promotions to reduce horizon effect",
+          "pruning": ["null-move pruning with depth reduction", "futility pruning at low depth", "late move reductions for non-critical moves"]
+        },
+        "evaluation": {
+          "material_values": {"P": 100, "N": 320, "B": 330, "R": 500, "Q": 900, "K": 20000},
+          "piece_square_tables": "64-value table per piece type for opening and endgame phases",
+          "positional_evaluation": ["pawn structure: doubled, isolated, passed", "king safety: pawn shield, attacker count", "mobility: number of legal moves per piece"],
+          "function_signature": "int evaluate(const Board &board, const EvaluationOptions &options)"
+        },
+        "uci_protocol": {
+          "commands": ["uci", "isready", "position", "go", "stop", "quit", "setoption"],
+          "engine_communication": "Stdout/StdIn text-based command parsing",
+          "position_parsing": "Supports FEN strings and move lists in UCI format"
+        }
+      },
+      "performance_optimization": {
+        "cache_optimization": "Move lists, bitboards, and NNUE features preallocated; memory aligned to 64 bytes",
+        "branch_prediction": "Hot paths optimized with likely/unlikely macros",
+        "cpu_instructions": ["SSE2 for bit operations", "AVX2 for NNUE vector math"],
+        "profiling": "Integrated perft and nodes-per-second benchmarks; logging via debug macro"
+      }
     }
   },
-  "monte_carlo_tie_break": {
-    "trigger": "Top candidates within 20 cp after full iterative deepening and win_prob_uncertainty > 0.05",
-    "budget": "max 128 rollouts or 250ms, whichever occurs first",
-    "policy": "Rollout policy uses NNUE lightweight evaluation at each node to choose move probabilistically (softmax over policy_net or history scores), depth cap 40 plies or until TB/mate",
-    "aggregation": "Report empirical winrate and override best_move if empirical winrate delta >= 0.05"
-  },
-  "time_management": {
-    "general": "deadline = now + max_time_ms - 30ms",
-    "node_check_frequency": 4096 nodes (configurable via --time-check-nodes)",
-    "short_time_mode": "if max_time_ms < 100 then allow only depths <= 6 and do single NNUE recompute per node (no heavy tie-breaks)",
-    "safety": "store last completed depth result and always return that if stop flag set"
-  },
-  "robustness_and_legality": {
-    "final_move_validation": "Before returning best_move, verify it's in root legal move list; if not, fallback to highest-scoring legal root move.",
-    "draw_detection": "Threefold via zobrist duplicate keys stored in history stack; 50-move via halfmove_clock in StateInfo.",
-    "insufficient_material": "Detect trivial draws and return draw prob = 0.0 win_prob with info flag",
-    "resignation_logic": {
-      "default_threshold": 0.01,
-      "minimum_depth_for_resign": 12,
-      "minimum_nodes_for_resign": 200000,
-      "tb_override": "Do not resign when TB indicates non-loss"
+  "backend_specifications": {
+    "api_layer": "Not applicable for local-only architecture",
+    "data_storage": {
+      "game_state": "SQLite DB; tables: games(id, fen_sequence, result, timestamps)",
+      "opening_book": "Binary Polyglot format embedded in resources",
+      "user_preferences": "SQLite table settings(key, value)",
+      "analytics_logging": "Local logs for session duration, engine response time, move statistics"
     },
-    "error_reporting": "Return JSON-serializable diagnostics on errors: {error_code, message, last_valid_move, debug_zobrist}"
-  },
-  "testing_and_validation": {
-    "perft_targets_startpos": {"1":20, "2":400, "3":8874, "4":197281, "5":4865609, "6":119060324},
-    "unit_tests": [
-      "perft positions (castling/en-passant/promotion)",
-      "zobrist invariance: make+unmake restores key",
-      "NNUE incremental vs full recompute parity",
-      "TT store/retrieve edge cases",
-      "SEE results on tactical EPDs"
-    ],
-    "integration_tests": [
-      "UCI compliance smoke tests",
-      "book integration and TB override tests",
-      "play matches vs baseline classical engine at time controls 0.5s, 1s, 5s, 30s",
-      "calibration validation: logistic fit reduces Brier score on held-out set"
-    ],
-    "benchmarks": {
-      "bench_cmd": "./chess_wizard --bench --tt-size 32 --time 10s --position startpos",
-      "report": "average nodes/sec, max depth, perft correctness, memory"
-    },
-    "acceptance_criteria": [
-      "Perft up to depth 6 matches targets",
-      "NNUE incremental outputs match full evaluation across 1000 random legal moves",
-      "BB nodes/sec meets platform target for test CPU",
-      "Engine suggests legal moves and win_prob is calibrated (Brier score below baseline)"
-    ]
-  },
-  "developer_guidelines_and_pseudocode": {
-    "main_loop_cli": "1) parse CLI args (--time, --tt-size, --book, --tb, --nnue)\n2) init zobrist, magic tables, NNUE loader (if enabled), TT, book, TB paths\n3) initialize board to startpos or given FEN\n4) loop: read user input (uci move or FEN)\n   a) if UCI command: handle accordingly\n   b) apply opponent move via make_move (validate legality)\n   c) call chess_wizard_suggest_move(fen_or_moves, max_time_ms, max_depth, opts)\n   d) print structured JSON and human-friendly line: Best: <move>  PV: <pv>  Score: <cp>  WinProb: <p>\n   e) continue",
-    "root_search_pseudocode": "function root_search(alpha,beta,depth):\n  generate root_moves; order via TT/book/policy\n  for each move m in root_moves:\n    make_move(m)\n    score = -search(-beta, -alpha, depth-1, ply+1)\n    unmake_move(m)\n    if score > best: update best, copy PV\n    if best >= beta: store TT lowerbound, record killer/history, break\n  return best",
-    "search_pseudocode": "function search(alpha,beta,depth,ply):\n  nodes++\n  if time_up -> set stop_flag and return 0\n  probe TT: if hit and stored_depth >= depth -> use stored bound\n  if depth <= 0 -> return quiescence(alpha,beta,ply)\n  if !in_check and depth >= 3 -> attempt null_move pruning (with R)\n  generate moves into captures and quiets\n  order moves (TT move first, policy, MVV-LVA, killers, history)\n  for i,m in moves:\n    make_move(m)\n    if i==0: score = -search(-beta,-alpha,depth-1,ply+1)\n    else:\n      score = -search(-alpha-1,-alpha,depth-1,ply+1) // PVS\n      if score > alpha && score < beta:\n        score = -search(-beta,-score,depth-1,ply+1)\n    unmake_move(m)\n    if score >= beta: store TT lowerbound, update history/killer, return score\n    if score > alpha: alpha = score; update PV\n  store TT exact/upperbound with alpha\n  return alpha",
-    "quiescence_pseudocode": "function quiescence(alpha,beta,ply):\n  nodes++\n  int stand = eval()\n  if stand >= beta: return beta\n  if alpha < stand: alpha = stand\n  generate captures/promotions ordered by SEE/MVV-LVA\n  for each capture c:\n    make_move(c)\n    score = -quiescence(-beta,-alpha,ply+1)\n    unmake_move(c)\n    if score >= beta: return beta\n    if score > alpha: alpha = score\n  return alpha"
-  },
-  "cli_ux_flow": {
-    "modes": ["interactive CLI", "UCI server", "lib API"],
-    "interactive_example": [
-      {"cmd":"./chess_wizard --time 5000 --tt-size 32 --nnue ./nnue.bin --tb /path/tb --book book.bin"},
-      {"prompt":"Chess Wizard ready. Enter move or 'quit'."},
-      {"user":"e2e4"},
-      {"engine_flow":"apply opponent move -> suggest_move(...) -> print JSON & human line"},
-      {"engine_output":"{\"best_move\":\"e7e5\",\"pv\":[\"e7e5\",\"g1f3\"],\"score_cp\":10,\"win_prob\":0.512,\"depth\":18,\"nodes\":1234567,\"time_ms\":4987}"}
-    ],
-    "UCI_integration": {
-      "support": "uci, isready, ucinewgame, position, go, stop, ponder, quit",
-      "go_params": "wtime btime winc binc movestogo depth nodes movetime",
-      "uci_response": "info lines including depth, score, nodes, nps, pv; finally 'bestmove <uci>'
+    "performance_requirements": {
+      "nodes_per_second": "≥3 million on mid-range CPU",
+      "memory_limit": "≤200MB RAM for engine + UI",
+      "response_time": "≤2 seconds per suggested move",
+      "concurrent_users": "Single-user desktop"
     }
   },
-  "file_formats_and_io": {
-    "nnue_bin_format": "header magic 'CWNNUEv1' (8 bytes) | int32 input_size | int32 hidden_size | int32 output_size | quant_params | raw quantized weights (int16) | checksum",
-    "book_format": "polyglot .bin supported; provide csv_to_polyglot conversion tool",
-    "tb": "Syzygy path(s) supported; require TB files in configured folders",
-    "logging": "Verbose logs at --verbose with supply --log-file path"
+  "frontend_ui_specifications": {
+    "application_structure": {
+      "pages": [
+        {"name": "Main Game", "purpose": "Play game with engine suggestions"},
+        {"name": "Analysis", "purpose": "Post-game analysis and move exploration"},
+        {"name": "Settings", "purpose": "Engine options, themes, piece sets"},
+        {"name": "Opening Explorer", "purpose": "Explore openings, statistics, and frequency charts"}
+      ],
+      "navigation_flows": "Menu bar at top; side panel for moves and evaluation; context-sensitive modals for settings and analysis"
+    },
+    "main_game_page": {
+      "layout": {
+        "chessboard": {"width": 480, "height": 480, "top_left": [20,20]},
+        "side_panel": {"width": 250, "height": 480, "top_left": [510,20]},
+        "engine_controls": {"buttons": ["Suggest Move", "Undo", "Redo", "New Game"], "size": [100,40], "spacing": 10},
+        "move_history_list": {"position": [520,50], "font": "Roboto 14px"}
+      },
+      "chessboard": {
+        "square_size": 60,
+        "colors": {"light": "#F0D9B5", "dark": "#B58863"},
+        "piece_images": {"format": "SVG", "size": 60x60, "source": "resources/pieces/"},
+        "highlight_colors": {"legal_move": "#00FF00AA", "last_move": "#FFFF00AA", "check": "#FF0000AA"}
+      },
+      "side_panel": {
+        "evaluation_bar": {"width": 20, "height": 480, "gradient": ["#00FF00", "#FF0000"]},
+        "clock_display": {"font": "Roboto 18px", "position": [600,500]},
+        "engine_controls": {"button_labels": ["Suggest Move", "Undo", "Redo", "New Game"], "font": "Roboto 14px"}
+      }
+    },
+    "analysis_page": {
+      "engine_lines_display": {"max_lines": 5, "font": "Monaco 12px"},
+      "evaluation_graph": {"width": 700, "height": 300},
+      "move_tree_visualization": {"expandable_nodes": true},
+      "annotation_tools": ["Text annotation", "Arrow drawing", "Highlight squares"]
+    },
+    "settings_page": {
+      "engine_config": ["Max Depth", "Time per Move", "Use NNUE"],
+      "board_theme": ["Light", "Dark", "Wood", "Classic"],
+      "piece_set_selection": ["Standard", "Modern", "Alpha", "Beta"],
+      "engine_strength": ["Beginner", "Intermediate", "Advanced", "Master"]
+    },
+    "opening_explorer_page": {
+      "tree_visualization": {"max_depth": 12, "node_spacing": 60},
+      "statistics_display": {"games_played": true, "win_rate": true},
+      "position_frequency_chart": {"type": "bar", "color": "#3366CC"}
+    }
   },
-  "tuning_defaults": {
-    "tt_size_mb": 32,
-    "max_depth_default": 64,
-    "aspiration_window_start": 80,
-    "time_check_nodes": 4096,
-    "null_move_R": 2,
-    "lm_reduction_factor": 0.66,
-    "futility_margin_base": 100,
-    "history_saturation": 1<<28,
-    "killer_count_per_ply": 2,
-    "search_stop_margin_ms": 30
+  "ui_component_library": {
+    "chessboard_component": {
+      "states": ["default", "highlighted", "selected", "check"],
+      "ARIA_labels": {"board": "Chessboard", "square": "Chess square"},
+      "animation": {"move_duration": 0.25, "easing": "ease-in-out"}
+    },
+    "piece_component": {"states": ["default", "dragging", "promoting"], "ARIA": {"role": "img", "label": "Chess piece"}},
+    "move_list_component": {"states": ["normal", "hovered", "selected"], "font": "Monaco 12px"},
+    "evaluation_bar": {"gradient": ["#00FF00", "#FF0000"], "orientation": "vertical"},
+    "buttons": {"variants": ["default", "hover", "active", "disabled"], "size": [100,40], "animation": {"duration": 0.2, "ease": "linear"}},
+    "modal_dialogs": {"overlay_color": "#000000AA", "animation": {"fade_in": 0.2, "fade_out": 0.2}},
+    "sliders": {"track_color": "#CCCCCC", "thumb_color": "#3366CC"},
+    "dropdown_menus": {"font": "Roboto 14px", "hover_color": "#EEEEEE"}
   },
-  "deliverables": [
-    "Complete C++20 codebase implementing all modules (bitboard, movegen, search, eval, nnue, tt, uci, book, tb, cli, bench, tests)",
-    "Prebuilt nnue.bin example or instructions to convert Stockfish NNUE weights",
-    "CMakeLists and example Dockerfile for reproducible build",
-    "Calibration scripts (Python) for sigmoid fit and evaluation",
-    "Automated test suite and bench harness",
-    "README with exact build/run commands and tuning guidelines"
-  ],
-  "acceptance_criteria": [
-    "Perft counts for startpos match up to depth 6",
-    "NNUE incremental evaluation identical to full recompute over random move sequences (sample size >= 10k)",
-    "Bench nodes/sec meets target for test platform",
-    "Engine returns legal move within requested time for 1000 random positions",
-    "Score→winprob calibration passes Brier score threshold on holdout data"
-  ],
-  "notes_and_implementation_risks": {
-    "nnue_training": "Training NNUE weights is non-trivial; initially ship Chess Wizard with pretrained NNUE or fallback to classical eval. Provide conversion tool/format to import Stockfish NNUE weights if licensing permits.",
-    "magic_generation": "If magic constants not supplied, generation can be slow; include precomputed set for x64 and arm64 in repository.",
-    "syzygy_availability": "Tablebases are large; treat TB probing as optional and allow user to configure paths.",
-    "platform_variance": "-march=native yields performance variance; document expected behavior and provide compile flag guidance."
+  "ux_specifications": {
+    "user_flows": {
+      "new_game": {"trigger": "menu click", "response": "reset board, reset timers, clear move history", "loading_state": "none", "error_state": "invalid FEN not possible", "success_confirmation": "Board ready for new game"},
+      "make_move": {"trigger": "click or drag", "response": "move applied, engine suggestion updated", "loading_state": "highlight legal squares", "error_state": "illegal move reverted", "success_confirmation": "Move applied"},
+      "engine_suggestion": {"trigger": "button click", "response": "highlight suggested move", "loading_state": "spinner 0.25s", "success_confirmation": "Move highlighted"},
+      "undo_redo": {"trigger": "button click", "response": "board state updated", "loading_state": "none", "success_confirmation": "Move undone/redone"},
+      "save_load_game": {"trigger": "menu click", "response": "open file dialog, write/read SQLite DB", "success_confirmation": "Game saved/loaded successfully"},
+      "position_analysis": {"trigger": "select position", "response": "display engine lines and evaluation graph"}
+    },
+    "animations_transitions": {
+      "piece_move": {"duration": 0.25, "easing": "ease-in-out"},
+      "page_transition": {"type": "fade", "duration": 0.3},
+      "loading_spinner": {"duration": 1.0, "loop": true},
+      "hover_effect": {"color_change": "#EEEEEE", "duration": 0.15}
+    },
+    "microinteractions": {
+      "click_feedback": "button opacity change 0.1s",
+      "drag_drop_cue": "piece slightly enlarges 1.1x while dragging",
+      "tooltip": {"appearance_delay": 0.3, "disappearance_delay": 0.2},
+      "notifications": {"slide_in": 0.2, "slide_out": 0.2, "color": "#3366CC"},
+      "sound_effects": {"move": "click.wav", "capture": "capture.wav"}
+    }
   },
-  "final_statement": "This JSON is a surgical, exhaustive blueprint for Chess Wizard: every hot function, data structure, constant, and algorithmic choice is specified to allow a deterministic, high-performance, accuracy-first chess move predictor implementation. Use this to generate code or hand-implement a production Chess Wizard engine focused on maximizing actual win probability while remaining efficient."
+  "visual_design_system": {
+    "typography": {
+      "primary_font": "Roboto",
+      "secondary_font": "Monaco",
+      "headings": {"h1": 32, "h2": 28, "h3": 24, "h4": 20, "h5": 16, "h6": 14},
+      "line_height": 1.5,
+      "letter_spacing": 0.5,
+      "weights": {"normal": 400, "medium": 500, "bold": 700},
+      "text_colors": {"primary": "#000000", "secondary": "#555555", "disabled": "#AAAAAA"}
+    },
+    "color_palette": {
+      "primary": "#3366CC",
+      "secondary": "#FFCC00",
+      "accent": "#33CC99",
+      "background_light": "#FFFFFF",
+      "background_dark": "#121212",
+      "status_colors": {"success": "#00FF00", "warning": "#FF9900", "error": "#FF0000", "info": "#0099FF"},
+      "chess_colors": {"move_highlight": "#00FF00AA", "last_move": "#FFFF00AA", "check": "#FF0000AA"}
+    },
+    "spacing_system": {
+      "base_unit": 8,
+      "scale": [0, 4, 8, 12, 16, 24, 32, 48, 64],
+      "component_spacing": {"padding": 12, "margin": 12, "gap": 8},
+      "layout_grid": {"columns": 12, "gutter": 16}
+    },
+    "icons_and_imagery": {
+      "icon_set": "SVG icons in resources/icons/",
+      "piece_images": "SVG, 60x60 px",
+      "logo": "SVG 128x128",
+      "favicon": "PNG 32x32"
+    }
+  },
+  "responsive_design": {
+    "breakpoints": {"mobile": 480, "tablet": 768, "desktop": 1024},
+    "layout_adjustments": "Chessboard scales to max width 80% of container, side panel collapses below 768px",
+    "touch_target_sizes": "Minimum 44x44 px",
+    "mobile_gestures": ["drag-and-drop", "tap-to-select"]
+  },
+  "integration_specifications": {
+    "engine_integration": {
+      "communication": "Direct C++ function calls within single process",
+      "data_serialization": "In-memory C++ structs, no network serialization",
+      "error_handling": "Return error codes, log to file",
+      "performance_monitoring": "Internal logging of nodes/sec, time per move"
+    },
+    "external_services": "None; fully local execution"
+  },
+  "testing_specifications": {
+    "engine_testing": {
+      "perft_tests": "Validate move generation to depth 6; exact node counts",
+      "position_tests": ["tactical", "positional", "checkmate detection", "stalemate detection"],
+      "performance_benchmarks": "Nodes/sec measurements on various CPU configurations",
+      "memory_leak_tests": "Valgrind or AddressSanitizer run"
+    },
+    "ui_testing": {
+      "unit_tests": "Each component tested for rendering, state changes, and events",
+      "integration_tests": "Engine responses reflected correctly on UI",
+      "end_to_end_tests": "Simulate game flow, new game, undo/redo, move suggestions",
+      "cross_browser_testing": "Qt cross-platform desktop testing"
+    },
+    "quality_assurance": {
+      "performance": "Target 3M nodes/sec with <2s response",
+      "security": "Validate FEN input, sanitize logs",
+      "accessibility": "Keyboard navigation, ARIA labels",
+      "localization": "Support for English; other languages optional"
+    }
+  },
+  "development_workflow": {
+    "build_process": {
+      "environment_setup": "CMake + GCC/Clang/MSVC; Qt5/6 installed",
+      "dependency_management": "CMake ExternalProject for SQLite, Qt, optional NNUE library",
+      "ci_pipeline": "Automated build, unit tests, perft validation"
+    },
+    "code_organization": {
+      "file_naming": "snake_case for source, PascalCase for classes",
+      "directory_structure": "As specified in engine_implementation",
+      "code_style": "Google C++ Style Guide",
+      "documentation": "Doxygen for C++ modules, Markdown for UI specs"
+    },
+    "deployment": {
+      "packaging": "Single installer (NSIS for Windows, DMG for macOS, AppImage for Linux)",
+      "installation": "Installer includes binaries, resources, NNUE weights",
+      "update_mechanism": "Manual update; optional auto-check via local file version",
+      "system_requirements": {"CPU": "x86_64 2.0 GHz", "RAM": "4GB", "Storage": "200MB"}
+    }
+  },
+  "documentation": {
+    "technical": {
+      "api_docs": "Doxygen-generated for all engine classes/functions",
+      "architecture_decisions": "Markdown ADR files describing search, evaluation, and UCI design",
+      "performance_profiling": "Guides for perft, nodes/sec, NNUE performance",
+      "troubleshooting": "Common errors and fixes for engine startup, illegal move detection, GUI rendering"
+    },
+    "user": {
+      "getting_started": "Step-by-step guide for installation and first game",
+      "feature_explanation": "Descriptions for each UI page and engine feature",
+      "keyboard_shortcuts": ["Ctrl+Z: Undo", "Ctrl+Y: Redo", "Space: Suggest move", "Ctrl+N: New game"],
+      "faqs": ["How to reset engine?", "How to change piece set?", "How to load game?"]
+    }
+  },
+  "performance_metrics_and_monitoring": {
+    "engine_metrics": {
+      "nodes_per_second": "Target ≥3M",
+      "hash_table_usage": "Monitor % of entries used",
+      "search_depth": "Track max depth achieved per game",
+      "branching_factor": "Average branching factor recorded"
+    },
+    "application_metrics": {
+      "load_time": "≤2 seconds",
+      "frame_rate": "≥60fps for UI animations",
+      "memory_usage": "≤200MB",
+      "network_usage": "None (local-only)"
+    }
+  },
+  "security_considerations": {
+    "input_validation": "FEN strings validated; illegal characters rejected",
+    "sanitization": "Logs sanitized before writing",
+    "data_protection": "Local file permissions enforced",
+    "privacy": "No external connections; all user data stored locally"
+  },
+  "accessibility": {
+    "screen_reader_compatibility": "ARIA labels on all interactive elements",
+    "keyboard_navigation": "Tab order for menus, piece selection, engine buttons",
+    "color_contrast": "Minimum 4.5:1 ratio for all text and highlights",
+    "focus_management": "Focus indicators on selected squares and UI elements"
+  },
+  "internationalization": {
+    "language_support": ["English (default)"],
+    "date_time_formats": "ISO 8601",
+    "number_formats": "Decimal with dot separator",
+    "rtl_support": "Not implemented in initial version"
+  },
+  "future_extensions": {
+    "planned_features": ["Multiplayer over LAN", "Cloud sync for game history", "Expanded NNUE training sets"],
+    "architecture_considerations": "Modular engine design allows cloud integration without changing core engine",
+    "upgrade_paths": "Settings and resources versioned for seamless upgrade"
+  },
+  "compliance_and_licensing": {
+    "open_source_license": "MIT",
+    "third_party_dependencies": ["Qt5/6: LGPL", "SQLite: Public Domain", "NNUE library: GPLv3 (optional)"],
+    "compliance_requirements": "No proprietary code linked without license compliance"
+  }
 }

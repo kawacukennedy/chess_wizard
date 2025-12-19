@@ -395,17 +395,18 @@ int search(int alpha, int beta, int depth, int ply, Position& pos, bool do_null)
         int score;
         bool gives_check = pos.is_check();
 
+        int extension = (gives_check ? 1 : 0) + (move.is_promotion() ? 1 : 0);
         if (moves_searched == 1) {
-            score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
+            score = -search(-beta, -alpha, depth - 1 + extension, ply + 1, pos, true);
         } else {
             int reduction = 0;
             if (depth >= 3 && moves_searched > 3 && !move.is_capture() && !in_check && !gives_check) {
                 reduction = 1 + static_cast<int>(log2(depth) * log2(moves_searched) * 0.66);
             }
 
-            score = -search(-alpha - 1, -alpha, depth - 1 - reduction + (gives_check ? 1 : 0), ply + 1, pos, true);
+            score = -search(-alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1, pos, true);
             if (score > alpha && score < beta) {
-                score = -search(-beta, -alpha, depth - 1 + (gives_check ? 1 : 0), ply + 1, pos, true);
+                score = -search(-beta, -alpha, depth - 1 + extension, ply + 1, pos, true);
             }
         }
         if (score > alpha) {
@@ -564,11 +565,18 @@ SearchResult search_position(Position& pos, const SearchLimits& limits, const Ch
     std::vector<std::pair<Move, int>> last_moves_scores;
 
     for (int current_depth = 1; current_depth <= Limits.max_depth; ++current_depth) {
-        // Disable aspiration for now
-        int alpha = -MATE_VALUE;
-        int beta = MATE_VALUE;
+        int aspiration = std::max(80, 5 * current_depth);
+        int alpha = (current_depth == 1) ? -MATE_VALUE : score - aspiration;
+        int beta = (current_depth == 1) ? MATE_VALUE : score + aspiration;
 
         score = search(alpha, beta, current_depth, 0, pos, true);
+
+        // If aspiration failed, re-search with wider window
+        if (score <= alpha || score >= beta) {
+            alpha = -MATE_VALUE;
+            beta = MATE_VALUE;
+            score = search(alpha, beta, current_depth, 0, pos, true);
+        }
 
         if (StopSearch && current_depth > 1) {
             break;

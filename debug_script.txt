@@ -1,4 +1,0 @@
-run --cli
-me
-bt
-quit

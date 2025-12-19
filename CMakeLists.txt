@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(ChessWizard CXX)
 
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
+find_package(SQLite3 REQUIRED)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -36,8 +39,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O1 -g -DDEBUG")
 
 # --- Source Files ---
 
-# Use glob to automatically find all .cpp files in src
-file(GLOB SOURCE_FILES "src/*.cpp")
+# Use glob to automatically find all .cpp files in src and subdirs
+file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
+file(GLOB_RECURSE HEADER_FILES "src/*.h" "include/*.h")
 
 # --- Targets as per Specification ---
 
@@ -45,7 +49,8 @@ file(GLOB SOURCE_FILES "src/*.cpp")
 add_executable(chess_wizard ${SOURCE_FILES})
 
 # Public include directory for the executable
-target_include_directories(chess_wizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(chess_wizard PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(chess_wizard Qt5::Core Qt5::Widgets SQLite::SQLite3)
 
 # 2. Static Library Target: libchesswizard.a
 add_library(libchesswizard STATIC ${SOURCE_FILES})
